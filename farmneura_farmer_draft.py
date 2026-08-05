@@ -205,6 +205,7 @@ DATABASE_FILE = "farmneura.db"
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_FILE)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 def init_db():
@@ -395,6 +396,88 @@ def db_get_latest_record(plot_id):
     ).fetchone()
     conn.close()
     return dict(row) if row else None
+
+# --- CRUD Operations (Update & Delete) ---
+def db_update_farm(farm_id, name, location, size):
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            "UPDATE farms SET name = ?, location = ?, size_sq_ft = ? WHERE id = ?",
+            (name, location, size, farm_id)
+        )
+        conn.commit()
+        conn.close()
+        return True, "Farm details updated successfully."
+    except sqlite3.IntegrityError:
+        return False, f"Farm name '{name}' already exists. Please choose a unique name."
+    except Exception as e:
+        return False, f"Error updating farm: {str(e)}"
+
+def db_delete_farm(farm_id):
+    try:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM farms WHERE id = ?", (farm_id,))
+        conn.commit()
+        conn.close()
+        return True, "Farm and all associated plots/crops deleted successfully."
+    except Exception as e:
+        return False, f"Error deleting farm: {str(e)}"
+
+def db_update_plot(plot_id, name, size, start_date, end_date, cost, notes):
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            "UPDATE plots SET plot_name = ?, size_sq_ft = ?, cycle_start = ?, cycle_end = ?, cost_records = ?, notes = ? WHERE id = ?",
+            (name, size, start_date, end_date, cost, notes, plot_id)
+        )
+        conn.commit()
+        conn.close()
+        return True, "Plot details updated successfully."
+    except Exception as e:
+        return False, f"Error updating plot: {str(e)}"
+
+def db_delete_plot(plot_id):
+    try:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM plots WHERE id = ?", (plot_id,))
+        conn.commit()
+        conn.close()
+        return True, "Plot and all associated crops/logs deleted successfully."
+    except Exception as e:
+        return False, f"Error deleting plot: {str(e)}"
+
+def db_update_plant(plant_id, name):
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            "UPDATE plants SET name = ? WHERE id = ?",
+            (name, plant_id)
+        )
+        conn.commit()
+        conn.close()
+        return True, "Crop details updated successfully."
+    except Exception as e:
+        return False, f"Error updating crop: {str(e)}"
+
+def db_delete_plant(plant_id):
+    try:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM plants WHERE id = ?", (plant_id,))
+        conn.commit()
+        conn.close()
+        return True, "Crop removed successfully."
+    except Exception as e:
+        return False, f"Error removing crop: {str(e)}"
+
+def db_delete_record(record_id):
+    try:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM monitoring_records WHERE id = ?", (record_id,))
+        conn.commit()
+        conn.close()
+        return True, "Monitoring record deleted successfully."
+    except Exception as e:
+        return False, f"Error deleting record: {str(e)}"
 
 # ---------------------------------------------------------------------
 # INTEGRATION FUNCTIONS
@@ -599,7 +682,6 @@ def run_yolo_count_and_diagnosis(image_file):
             diagnosis = f"Detected {diseased_count} stressed/diseased crops (~{percentage}% of total detected)."
         else:
             diagnosis = "Healthy growth. All detected crop clusters appear healthy and robust."
-            
         return plant_count, diagnosis, image
 
     except Exception as e:
@@ -607,14 +689,9 @@ def run_yolo_count_and_diagnosis(image_file):
         return 0, f"Error processing model: {str(e)}", None
 
 
-def run_intervention_recommendation(diagnosis):
+def run_intervention_recommendation(diagnosis, model_choice="Llama 3.1 8B (Groq)", language_choice="🇲🇾 Bahasa Melayu"):
     """
-    Calls Groq API (Llama-4-Scout or fallback model) to generate an actionable agronomist intervention.
-    
-    Integration details:
-    1. Looks for the API key in st.secrets["GROQ_API_KEY"] or environment variables.
-    2. Sends the diagnosis with an agronomy persona prompt to Groq.
-    3. Handles lack of credentials gracefully by falling back to simulation and warning.
+    Calls Groq API (or Hugging Face serverless API for Qwen) to generate an actionable agronomist intervention.
     
     Returns:
         str: Recommended crop action plan
@@ -625,12 +702,57 @@ def run_intervention_recommendation(diagnosis):
         if "GROQ_API_KEY" in st.secrets:
             api_key = st.secrets["GROQ_API_KEY"]
     except Exception:
-        # st.secrets raises StreamlitSecretNotFoundError if no secrets file exists
         pass
 
     if not api_key:
         api_key = os.environ.get("GROQ_API_KEY")
     
+    # 1. Standard Prompt configuration based on language preference
+    if language_choice == "🇲🇾 Bahasa Melayu":
+        system_prompt = (
+            "Anda adalah ejen pertanian jitu FarmNeura, seorang agronomis profesional yang pakar dalam bidang agrivoltaik (penanaman tanaman di bawah panel solar) dan sayuran daun brassica, terutamanya Sawi Pakchoy.\n"
+            "Sediakan senarai cadangan tindakan agronomis yang sangat praktikal dan ringkas untuk petani berdasarkan diagnosis yang diberikan.\n"
+            "Ambil kira faktor persekitaran agrivoltaik (contohnya, air larian hujan dari panel solar, kelembapan tanah di bawah teduhan solar, dan pH tanah akibat pembersihan panel).\n"
+            "Formatkan jawapan anda dalam bentuk senarai peluru (bullet-point) dalam Bahasa Melayu yang mudah difahami oleh petani tempatan. Hadkan cadangan di bawah 3-4 mata sahaja."
+        )
+    else:
+        system_prompt = (
+            "You are FarmNeura's precision agricultural agent, a professional agronomist specializing in agrivoltaics (crops grown under solar panel arrays) and leafy green brassicas, specifically Pakchoy.\n"
+            "Provide a highly actionable, concise list of agronomist recommendations for the farmer based on the provided diagnosis.\n"
+            "Take into consideration agrivoltaic environmental factors (e.g., panel rain runoff lines, altered soil shade humidity, and panel-washing runoff pH values).\n"
+            "Format your answer as a clean bullet-point list in simple farmer-friendly terms. Keep it under 3-4 bullet points."
+        )
+
+    # 2. Check if Qwen (Hugging Face serverless) is selected
+    if model_choice == "Qwen 2.5 72B (Free HF)":
+        try:
+            url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct"
+            prompt_input = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\nDiagnosis: {diagnosis}<|im_end|>\n<|im_start|>assistant\n"
+            payload = {
+                "inputs": prompt_input,
+                "parameters": {"max_new_tokens": 250, "temperature": 0.2}
+            }
+            # Optional: use HF token if available in secrets
+            headers = {}
+            if "HF_TOKEN" in st.secrets:
+                headers["Authorization"] = f"Bearer {st.secrets['HF_TOKEN']}"
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=8)
+            if response.status_code == 200:
+                res_data = response.json()
+                if isinstance(res_data, list) and len(res_data) > 0:
+                    text = res_data[0].get("generated_text", "")
+                    if "assistant\n" in text:
+                        return text.split("assistant\n")[-1].strip()
+                    return text.strip()
+                elif isinstance(res_data, dict) and "generated_text" in res_data:
+                    return res_data["generated_text"].strip()
+        except Exception:
+            pass
+        st.warning("⚠️ Qwen 2.5 API is currently busy or rate-limited. Falling back to Groq Llama.")
+        model_choice = "Llama 3.1 8B (Groq)"
+
+    # Mock response if Groq API key is missing
     if not api_key:
         st.markdown(
             """
@@ -643,27 +765,29 @@ def run_intervention_recommendation(diagnosis):
             """, 
             unsafe_allow_html=True
         )
-        # Mock responses based on diagnosis keyword matches
         d_lower = diagnosis.lower()
-        if "nitrogen" in d_lower or "chlorosis" in d_lower:
-            return "- Apply a nitrogen-rich liquid fertilizer (e.g. urea or organic seaweed extract) at sunset.\n- Test soil moisture levels at root depth.\n- Inspect solar panels above to verify rain runoff isn't causing localized soil leaching."
-        elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower:
-            return "- Spray organic neem oil or recommended copper-based fungicide to affected canopy rows.\n- Prune diseased lower leaves to prevent spore transmission.\n- Ensure solar panel shading is not trapping excessive humidity overnight."
-        elif "dehydration" in d_lower or "wilting" in d_lower:
-            return "- Increase drip irrigation duration by 15% during morning hours.\n- Verify solar tracker positions; utilize panel shadows to shade distressed crops during peak midday heat."
+        if language_choice == "🇲🇾 Bahasa Melayu":
+            if "nitrogen" in d_lower or "chlorosis" in d_lower or "yellowing" in d_lower:
+                return "- Sembur baja cecair nitrogen (seperti urea atau ekstrak rumpai laut organik) pada waktu senja.\n- Periksa tahap kelembapan tanah pada kedalaman akar.\n- Periksa panel solar di atas untuk memastikan limpahan air tidak menghakis nutrien tanah."
+            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower or "stressed" in d_lower:
+                return "- Sembur minyak neem organik atau racun kulat berasaskan tembaga yang disyorkan pada kawasan terjejas.\n- Buang daun bawah yang berpenyakit untuk mencegah penyebaran spora.\n- Pastikan teduhan panel solar tidak perangkap kelembapan berlebihan semalaman."
+            else:
+                return "- Teruskan pemantauan kelembapan tanah dan pemeriksaan kanopi mingguan.\n- Pastikan panel solar bersih (air basuhan berhabuk boleh mengubah kemasinan tanah berhampiran panel)."
         else:
-            return "- Continue regular moisture tracking and weekly canopy inspections.\n- Ensure solar panels are clean (dust runoff can alter soil salinity near panel edges)."
+            if "nitrogen" in d_lower or "chlorosis" in d_lower or "yellowing" in d_lower:
+                return "- Apply a nitrogen-rich liquid fertilizer (e.g. urea or organic seaweed extract) at sunset.\n- Test soil moisture levels at root depth.\n- Inspect solar panels above to verify rain runoff isn't causing localized soil leaching."
+            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower or "stressed" in d_lower:
+                return "- Spray organic neem oil or recommended copper-based fungicide to affected canopy rows.\n- Prune diseased lower leaves to prevent spore transmission.\n- Ensure solar panel shading is not trapping excessive humidity overnight."
+            else:
+                return "- Continue regular moisture tracking and weekly canopy inspections.\n- Ensure solar panels are clean (dust runoff can alter soil salinity near panel edges)."
 
-    # Standard Prompt configuration (optimized for Pakchoy under solar panels)
-    system_prompt = (
-        "You are FarmNeura's precision agricultural agent, a professional agronomist specializing in agrivoltaics (crops grown under solar panel arrays) and leafy green brassicas, specifically Pakchoy.\n"
-        "Provide a highly actionable, concise list of agronomist recommendations for the farmer based on the provided diagnosis.\n"
-        "Take into consideration agrivoltaic environmental factors (e.g., panel rain runoff lines, altered soil shade humidity, and panel-washing runoff pH values).\n"
-        "Format your answer as a clean bullet-point list in simple farmer-friendly terms. Keep it under 3-4 bullet points."
-    )
-    
-    # Primary model requested: llama-4-scout. (Fallback model used if it is unavailable on the account)
-    primary_model = "llama-4-scout"
+    # Map model choice to Groq models
+    model_map = {
+        "Llama 3.1 8B (Groq)": "llama-3.1-8b-instant",
+        "Gemma 2 9B (Groq)": "gemma2-9b-it",
+        "Mixtral 8x7B (Groq)": "mixtral-8x7b-32768"
+    }
+    primary_model = model_map.get(model_choice, "llama-3.1-8b-instant")
     fallback_model = "llama-3.1-8b-instant"
     
     try:
@@ -681,7 +805,6 @@ def run_intervention_recommendation(diagnosis):
                 )
                 return chat_completion.choices[0].message.content
             except Exception:
-                # Fallback to standard public model if primary fails
                 chat_completion = client.chat.completions.create(
                     model=fallback_model,
                     messages=[
@@ -693,7 +816,6 @@ def run_intervention_recommendation(diagnosis):
                 )
                 return chat_completion.choices[0].message.content
         else:
-            # Fallback to direct requests if Groq Python SDK is not installed
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key}",
@@ -713,7 +835,6 @@ def run_intervention_recommendation(diagnosis):
             if response.status_code == 200:
                 return response.json()["choices"][0]["message"]["content"]
             else:
-                # Try fallback model
                 payload["model"] = fallback_model
                 response = requests.post(url, json=payload, timeout=10)
                 if response.status_code == 200:
@@ -727,7 +848,6 @@ def run_intervention_recommendation(diagnosis):
 
 # ---------------------------------------------------------------------
 # SIDEBAR NAVIGATION & SELECTION
-# ---------------------------------------------------------------------
 st.sidebar.markdown("<h2 style='color:#1b4d3e; margin-top:0;'>🌱 FarmNeura</h2>", unsafe_allow_html=True)
 st.sidebar.caption("Farmer Interface v2")
 
@@ -755,6 +875,24 @@ if view_mode == "📷 Plot Monitoring":
             st.sidebar.warning("No plots registered for this farm. Please go to Registry & Management to add a plot.")
         else:
             selected_plot_obj = st.sidebar.selectbox("Select Target Plot", options=plots_list, format_func=lambda x: x["plot_name"])
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🤖 AI Configuration")
+language_choice = st.sidebar.selectbox(
+    "Intervention Language",
+    ["🇲🇾 Bahasa Melayu", "🇬🇧 English"],
+    index=0
+)
+model_choice = st.sidebar.selectbox(
+    "Select LLM Model",
+    [
+        "Llama 3.1 8B (Groq)",
+        "Gemma 2 9B (Groq)",
+        "Qwen 2.5 72B (Free HF)",
+        "Mixtral 8x7B (Groq)"
+    ],
+    index=0
+)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
@@ -921,6 +1059,52 @@ elif view_mode == "⚙️ Registry & Management":
             df_farms.columns = ["ID", "Farm Name", "Location", "Size (sq ft)"]
             st.dataframe(df_farms, use_container_width=True, hide_index=True)
             
+            # Edit & Delete Farm Expanders
+            col_edit, col_del = st.columns(2)
+            with col_edit:
+                with st.expander("✏️ Edit Farm Details"):
+                    selected_farm_to_edit = st.selectbox(
+                        "Select Farm to Edit",
+                        options=farms,
+                        format_func=lambda x: x["name"],
+                        key="edit_farm_select"
+                    )
+                    if selected_farm_to_edit:
+                        with st.form("edit_farm_form"):
+                            edit_name = st.text_input("New Farm Name", value=selected_farm_to_edit["name"])
+                            edit_loc = st.text_input("New Location", value=selected_farm_to_edit["location"])
+                            edit_size = st.number_input("New Size (sq ft)", min_value=1.0, value=float(selected_farm_to_edit["size_sq_ft"]))
+                            
+                            edit_submit = st.form_submit_button("Save Changes", type="primary")
+                            if edit_submit:
+                                if not edit_name.strip():
+                                    st.error("Farm name cannot be empty.")
+                                else:
+                                    ok, m = db_update_farm(selected_farm_to_edit["id"], edit_name, edit_loc, edit_size)
+                                    if ok:
+                                        st.success(m)
+                                        st.rerun()
+                                    else:
+                                        st.error(m)
+            with col_del:
+                with st.expander("🗑️ Delete Farm Location"):
+                    selected_farm_to_delete = st.selectbox(
+                        "Select Farm to Delete",
+                        options=farms,
+                        format_func=lambda x: x["name"],
+                        key="delete_farm_select"
+                    )
+                    if selected_farm_to_delete:
+                        st.warning(f"⚠️ Warning: Deleting '{selected_farm_to_delete['name']}' will permanently delete all associated plots, crop registries, and monitoring history records! This action cannot be undone.")
+                        confirm_delete = st.checkbox(f"I confirm that I want to delete '{selected_farm_to_delete['name']}'", key="confirm_delete_farm")
+                        if st.button("Delete Farm Location", type="primary", disabled=not confirm_delete, key="del_farm_btn"):
+                            ok, m = db_delete_farm(selected_farm_to_delete["id"])
+                            if ok:
+                                st.success(m)
+                                st.rerun()
+                            else:
+                                st.error(m)
+            
     with sub_tab_plot:
         st.markdown("#### Register a New Plot inside a Farm")
         farms = db_get_farms()
@@ -967,6 +1151,66 @@ elif view_mode == "⚙️ Registry & Management":
                 df_plots = df_plots.drop(columns=["farm_id"])
                 df_plots.columns = ["ID", "Plot Name", "Size (sq ft)", "Cycle Start", "Cycle End", "Budget (MYR)", "Notes"]
                 st.dataframe(df_plots, use_container_width=True, hide_index=True)
+                
+                # Edit & Delete Plot Expanders
+                col_edit, col_del = st.columns(2)
+                with col_edit:
+                    with st.expander("✏️ Edit Plot Details"):
+                        selected_plot_to_edit = st.selectbox(
+                            "Select Plot to Edit",
+                            options=plots,
+                            format_func=lambda x: x["plot_name"],
+                            key="edit_plot_select"
+                        )
+                        if selected_plot_to_edit:
+                            with st.form("edit_plot_form"):
+                                edit_p_name = st.text_input("New Plot Name", value=selected_plot_to_edit["plot_name"])
+                                edit_p_size = st.number_input("New Plot Size (sq ft)", min_value=1.0, value=float(selected_plot_to_edit["size_sq_ft"]))
+                                try:
+                                    start_val = datetime.strptime(selected_plot_to_edit["cycle_start"], "%Y-%m-%d")
+                                    end_val = datetime.strptime(selected_plot_to_edit["cycle_end"], "%Y-%m-%d")
+                                except:
+                                    start_val = datetime.now()
+                                    end_val = datetime.now()
+                                edit_p_start = st.date_input("New Cycle Start Date", value=start_val)
+                                edit_p_end = st.date_input("New Cycle End Date", value=end_val)
+                                edit_p_cost = st.number_input("New Budget (MYR)", min_value=0.0, value=float(selected_plot_to_edit["cost_records"]))
+                                edit_p_notes = st.text_area("New Notes", value=selected_plot_to_edit["notes"] or "")
+                                
+                                edit_submit = st.form_submit_button("Save Changes", type="primary")
+                                if edit_submit:
+                                    if not edit_p_name.strip():
+                                        st.error("Plot name cannot be empty.")
+                                    else:
+                                        ok, m = db_update_plot(
+                                            selected_plot_to_edit["id"], edit_p_name, edit_p_size,
+                                            edit_p_start.strftime("%Y-%m-%d"),
+                                            edit_p_end.strftime("%Y-%m-%d"),
+                                            edit_p_cost, edit_p_notes
+                                        )
+                                        if ok:
+                                            st.success(m)
+                                            st.rerun()
+                                        else:
+                                            st.error(m)
+                with col_del:
+                    with st.expander("🗑️ Delete Plot"):
+                        selected_plot_to_delete = st.selectbox(
+                            "Select Plot to Delete",
+                            options=plots,
+                            format_func=lambda x: x["plot_name"],
+                            key="delete_plot_select"
+                        )
+                        if selected_plot_to_delete:
+                            st.warning(f"⚠️ Warning: Deleting '{selected_plot_to_delete['plot_name']}' will permanently delete all associated crop registries and monitoring history logs! This action cannot be undone.")
+                            confirm_delete = st.checkbox(f"I confirm that I want to delete '{selected_plot_to_delete['plot_name']}'", key="confirm_delete_plot")
+                            if st.button("Delete Plot", type="primary", disabled=not confirm_delete, key="del_plot_btn"):
+                                ok, m = db_delete_plot(selected_plot_to_delete["id"])
+                                if ok:
+                                    st.success(m)
+                                    st.rerun()
+                                else:
+                                    st.error(m)
             else:
                 st.info("No plots registered under this farm yet.")
 
@@ -1006,6 +1250,50 @@ elif view_mode == "⚙️ Registry & Management":
                     df_plants = df_plants.drop(columns=["plot_id"])
                     df_plants.columns = ["ID", "Crop/Plant Name"]
                     st.dataframe(df_plants, use_container_width=True, hide_index=True)
+                    
+                    # Edit & Delete Crop Expanders
+                    col_edit, col_del = st.columns(2)
+                    with col_edit:
+                        with st.expander("✏️ Edit Crop Name"):
+                            selected_crop_to_edit = st.selectbox(
+                                "Select Crop to Edit",
+                                options=plants,
+                                format_func=lambda x: x["name"],
+                                key="edit_crop_select"
+                            )
+                            if selected_crop_to_edit:
+                                with st.form("edit_crop_form"):
+                                    edit_c_name = st.text_input("New Crop/Plant Name", value=selected_crop_to_edit["name"])
+                                    
+                                    edit_submit = st.form_submit_button("Save Changes", type="primary")
+                                    if edit_submit:
+                                        if not edit_c_name.strip():
+                                            st.error("Crop name cannot be empty.")
+                                        else:
+                                            ok, m = db_update_plant(selected_crop_to_edit["id"], edit_c_name)
+                                            if ok:
+                                                st.success(m)
+                                                st.rerun()
+                                            else:
+                                                st.error(m)
+                    with col_del:
+                        with st.expander("🗑️ Remove Crop"):
+                            selected_crop_to_delete = st.selectbox(
+                                "Select Crop to Remove",
+                                options=plants,
+                                format_func=lambda x: x["name"],
+                                key="delete_crop_select"
+                            )
+                            if selected_crop_to_delete:
+                                st.warning(f"⚠️ Warning: Removing '{selected_crop_to_delete['name']}' will delete this crop assignment from the plot. It will not delete monitoring records.")
+                                confirm_delete = st.checkbox(f"I confirm that I want to remove '{selected_crop_to_delete['name']}'", key="confirm_delete_crop")
+                                if st.button("Remove Crop", type="primary", disabled=not confirm_delete, key="del_crop_btn"):
+                                    ok, m = db_delete_plant(selected_crop_to_delete["id"])
+                                    if ok:
+                                        st.success(m)
+                                        st.rerun()
+                                    else:
+                                        st.error(m)
                 else:
                     st.info("No crops registered in this plot yet.")
 
@@ -1059,7 +1347,7 @@ elif view_mode == "📷 Plot Monitoring":
                 if st.button("Diagnose Crop Health", type="primary"):
                     with st.spinner("Processing plant count & detecting abnormalities..."):
                         bil_pokok, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file)
-                        intervention = run_intervention_recommendation(diagnosis)
+                        intervention = run_intervention_recommendation(diagnosis, model_choice, language_choice)
                     
                     st.success("Diagnosis Complete!")
                     
@@ -1172,3 +1460,15 @@ elif view_mode == "📷 Plot Monitoring":
                         
                         if r.get("notes"):
                             st.markdown(f"📝 **Field Notes:** *\"{r['notes']}\"*")
+                        
+                        # Delete Record action
+                        st.markdown("---")
+                        col_space, col_delete_btn = st.columns([5, 2])
+                        with col_delete_btn:
+                            if st.button("🗑️ Delete Log", key=f"del_rec_{r['id']}", type="secondary", use_container_width=True):
+                                ok, m = db_delete_record(r['id'])
+                                if ok:
+                                    st.success("Log deleted!")
+                                    st.rerun()
+                                else:
+                                    st.error(m)
