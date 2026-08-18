@@ -262,10 +262,22 @@ def init_db():
         diagnosis TEXT NOT NULL,
         intervention TEXT NOT NULL,
         notes TEXT,
+        canopy_cover_pct REAL,
+        image_path TEXT,
         FOREIGN KEY (plot_id) REFERENCES plots (id) ON DELETE CASCADE
     )
     """)
+    
+    # Auto-migration check for existing databases
+    cursor.execute("PRAGMA table_info(monitoring_records)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "canopy_cover_pct" not in columns:
+        cursor.execute("ALTER TABLE monitoring_records ADD COLUMN canopy_cover_pct REAL")
+    if "image_path" not in columns:
+        cursor.execute("ALTER TABLE monitoring_records ADD COLUMN image_path TEXT")
+        
     conn.commit()
+
     
     # Pre-populate with default demo data on first-time initialization
     cursor.execute("SELECT COUNT(*) FROM farms")
@@ -367,16 +379,41 @@ def db_get_records(plot_id):
     conn.close()
     return [dict(r) for r in records]
 
-def db_add_record(plot_id, time, bil_pokok, diagnosis, intervention, notes):
+def save_uploaded_image(image_input, plot_id):
+    """
+    Saves image input to local uploads/ directory and returns relative file path.
+    """
+    uploads_dir = "uploads"
+    if not os.path.exists(uploads_dir):
+        os.makedirs(uploads_dir)
+        
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"plot_{plot_id}_{timestamp}.png"
+    filepath = os.path.join(uploads_dir, filename)
+    
+    try:
+        if isinstance(image_input, Image.Image):
+            image_input.save(filepath)
+        else:
+            pil_img = Image.open(image_input)
+            pil_img.save(filepath)
+        return filepath
+    except Exception:
+        return None
+
+def db_add_record(plot_id, time, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct=None, image_path=None):
     try:
         conn = get_db_connection()
-        conn.execute("INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?)",
-                     (plot_id, time, bil_pokok, diagnosis, intervention, notes.strip()))
+        conn.execute(
+            "INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (plot_id, time, bil_pokok, diagnosis, intervention, notes.strip() if notes else "", canopy_cover_pct, image_path)
+        )
         conn.commit()
         conn.close()
         return True, "Record successfully saved!"
     except Exception as e:
         return False, str(e)
+
 
 def db_get_plots_with_plants():
     conn = get_db_connection()
@@ -529,70 +566,89 @@ def simple_numpy_nms(boxes, scores, iou_threshold=0.45):
         
     return keep
 
-def run_yolo_count_and_diagnosis(image_file):
+def run_yolo_count_and_diagnosis(image_file, model_preference="Auto"):
     """
     Runs a YOLOv8 ONNX model to count plants and diagnose their condition.
-    
-    Integration details:
-    1. Preprocesses the user image (resizes to 640x640, scaling to float [0, 1]).
-    2. Runs inference using ONNX runtime session.
-    3. Triggers simulated fallback if model file or dependencies are absent.
+    Supports Tomato Disease (8 classes), Okra/Bendi Disease (3 classes), and generic detectors.
     
     Returns:
         tuple: (bil_pokok: int, diagnosis: str, annotated_image: PIL.Image)
     """
-    model_path = "models/yolov8_plant_detector.onnx"
-    if not os.path.exists(model_path) and os.path.exists("models/best_epoch50.onnx"):
-        model_path = "models/best_epoch50.onnx"
+    # Select appropriate model path
+    if "Okra" in model_preference and os.path.exists("models/best_(okra_model).onnx"):
+        model_path = "models/best_(okra_model).onnx"
+    elif "Tomato" in model_preference and os.path.exists("models/best_(tomato_leaf_model).onnx"):
+        model_path = "models/best_(tomato_leaf_model).onnx"
+    else:
+        # Auto-detect best available model
+        model_candidates = [
+            "models/best_(tomato_leaf_model).onnx",
+            "models/best_(okra_model).onnx",
+            "models/yolov8_plant_detector.onnx",
+            "models/best_epoch50.onnx",
+            "models/best.onnx"
+        ]
+        model_path = next((p for p in model_candidates if os.path.exists(p)), "models/best_(tomato_leaf_model).onnx")
+    
+    # 8-Class Tomato Disease Mapping
+    TOMATO_CLASSES = {
+        0: {"name": "Early Blight", "color": "#ff5722", "is_healthy": False, "ms": "Hawar Awal (Kulat)"},
+        1: {"name": "Septoria Leaf Spot", "color": "#e91e63", "is_healthy": False, "ms": "Bintik Daun Septoria"},
+        2: {"name": "Healthy Foliage", "color": "#00e676", "is_healthy": True, "ms": "Daun Sihat & Subur"},
+        3: {"name": "Bacterial Spot", "color": "#d50000", "is_healthy": False, "ms": "Bintik Daun Bakteria"},
+        4: {"name": "Late Blight", "color": "#b71c1c", "is_healthy": False, "ms": "Hawar Lewat (Kulat)"},
+        5: {"name": "Mosaic Virus", "color": "#9c27b0", "is_healthy": False, "ms": "Virus Mozek Daun"},
+        6: {"name": "Yellow Leaf Virus", "color": "#ffeb3b", "is_healthy": False, "ms": "Virus Daun Kuning / Klorosis"},
+        7: {"name": "Leaf Mold", "color": "#ff9800", "is_healthy": False, "ms": "Kulapuk Daun"},
+    }
+
+    # 3-Class Okra Disease Mapping
+    OKRA_CLASSES = {
+        0: {"name": "Downy Mildew", "color": "#ff5722", "is_healthy": False, "ms": "Kulat Kulapuk Berdebu"},
+        1: {"name": "Healthy Okra Leaf", "color": "#00e676", "is_healthy": True, "ms": "Daun Bendi Sihat & Subur"},
+        2: {"name": "Yellow Vein Mosaic", "color": "#ffeb3b", "is_healthy": False, "ms": "Penyakit Mozek Urat Kuning"},
+    }
     
     # Verify environment has necessary libraries and the model file exists
     if not HAS_YOLO_DEPS or not os.path.exists(model_path):
-        # Developer guidelines if they want to wire it up
         st.markdown(
             f"""
             <div class="dev-banner">
                 <strong>🔧 YOLOv8 Integration Info:</strong> Running in simulated mode.<br/>
-                To connect your real model:<br/>
-                1. Save your YOLOv8 ONNX model to: <code>{os.path.abspath(model_path)}</code><br/>
-                2. Install required dependencies: <code>pip install onnxruntime numpy Pillow</code>
+                Model targeted: <code>{os.path.abspath(model_path)}</code><br/>
+                Dependencies: <code>pip install onnxruntime numpy Pillow</code>
             </div>
             """, 
             unsafe_allow_html=True
         )
         
-        # Open image to draw mock boxes
         image = Image.open(image_file).convert("RGB")
         draw = ImageDraw.Draw(image)
         orig_w, orig_h = image.size
         
-        simulated_count = random.randint(35, 48)
-        
-        # Draw some mock boxes for demonstration
-        # We will draw a few green borders to show how the bounding boxes would look
-        num_mock_boxes = min(simulated_count, 15) # cap at 15 so it's not overcrowded
+        simulated_count = random.randint(28, 42)
+        num_mock_boxes = min(simulated_count, 12)
         for _ in range(num_mock_boxes):
-            box_w = random.randint(int(orig_w * 0.08), int(orig_w * 0.15))
-            box_h = random.randint(int(orig_h * 0.08), int(orig_h * 0.15))
+            box_w = random.randint(int(orig_w * 0.1), int(orig_w * 0.2))
+            box_h = random.randint(int(orig_h * 0.1), int(orig_h * 0.2))
             x1 = random.randint(0, orig_w - box_w)
             y1 = random.randint(0, orig_h - box_h)
             x2 = x1 + box_w
             y2 = y1 + box_h
             
-            # 85% healthy green, 15% diseased red
-            is_healthy = random.random() > 0.15
+            is_healthy = random.random() > 0.2
             color = "#00e676" if is_healthy else "#ff1744"
             draw.rectangle([x1, y1, x2, y2], outline=color, width=4)
             
         diagnoses = [
-            "Healthy growth. Strong chlorophyll signature across all rows.",
-            "Mild leaf chlorosis detected (suspected nitrogen deficiency) in 15% of plants.",
-            "Early stage leaf spot disease detected on a few lower-canopy crop clusters.",
-            "Dehydration stress noticed; minor wilting signs on crop borders."
+            "🟢 Healthy growth. Robust chlorophyll distribution across canopy rows.",
+            "⚠️ Mild leaf chlorosis detected (~15% of plants) - suspected nitrogen deficiency.",
+            "🔴 Early stage Septoria leaf spot detected on 3 lower-canopy crop clusters.",
+            "🟠 Mild wilting / water stress noticed along outer crop border."
         ]
         return simulated_count, random.choice(diagnoses), image
     
     try:
-        # Load ONNX session (cached for performance)
         @st.cache_resource
         def get_onnx_session(path):
             return ort.InferenceSession(path)
@@ -603,89 +659,117 @@ def run_yolo_count_and_diagnosis(image_file):
         image = Image.open(image_file).convert("RGB")
         orig_w, orig_h = image.size
         
-        # YOLOv8 standard dimensions (width=640, height=640)
+        # YOLOv8 standard dimensions (640x640)
         resized_img = image.resize((640, 640))
         img_data = np.array(resized_img).astype(np.float32) / 255.0
-        # Transpose HWC to CHW
-        img_data = np.transpose(img_data, (2, 0, 1))
-        # Add batch dimension -> Shape: (1, 3, 640, 640)
-        img_data = np.expand_dims(img_data, axis=0)
+        img_data = np.transpose(img_data, (2, 0, 1)) # HWC to CHW
+        img_data = np.expand_dims(img_data, axis=0)  # Shape: (1, 3, 640, 640)
         
         # 2. Run Inference
         input_name = session.get_inputs()[0].name
         outputs = session.run(None, {input_name: img_data})
         
-        # 3. Postprocess Output
-        # YOLOv8 model outputs are typically shape (1, 4 + num_classes, 8400)
-        output_tensor = np.squeeze(outputs[0])  # Shape: (4 + num_classes, 8400)
+        # 3. Postprocess Output (Shape: 1, 4 + num_classes, 8400)
+        output_tensor = np.squeeze(outputs[0])
         output_tensor = np.transpose(output_tensor)  # Shape: (8400, 4 + num_classes)
         
-        # Coordinates (cx, cy, w, h)
+        num_classes = output_tensor.shape[1] - 4
         boxes = output_tensor[:, :4]
-        # Class probabilities
         scores = output_tensor[:, 4:]
         
         class_ids = np.argmax(scores, axis=1)
         confidences = np.max(scores, axis=1)
         
-        # Filter detections by confidence threshold (lowered to 0.15 for early epochs)
-        confidence_threshold = 0.15
+        # Confidence threshold
+        confidence_threshold = 0.20
         mask = confidences > confidence_threshold
         filtered_boxes = boxes[mask]
         filtered_scores = confidences[mask]
         filtered_class_ids = class_ids[mask]
         
-        # Apply NMS
+        # Apply Non-Maximum Suppression (NMS)
         keep_indices = simple_numpy_nms(filtered_boxes, filtered_scores, iou_threshold=0.45)
-        
-        # Count plants (total detections)
         plant_count = len(keep_indices)
         
-        # Draw bounding boxes on the original image using PIL
         draw = ImageDraw.Draw(image)
-        
-        # Auto-detect if ONNX output coordinates are normalized [0, 1] or absolute [0, 640]
-        # If the maximum coordinate in our detections is <= 1.01, we treat them as normalized
         is_normalized = (np.max(filtered_boxes) <= 1.01) if len(filtered_boxes) > 0 else False
         
-        # Determine crop health based on class mappings
-        # Class 0: Healthy, Class 1: Diseased/Stressed
         healthy_count = 0
         diseased_count = 0
+        disease_counts = {}
+        
         for idx in keep_indices:
             box = filtered_boxes[idx]
-            cid = filtered_class_ids[idx]
+            cid = int(filtered_class_ids[idx])
+            conf = float(filtered_scores[idx])
             
-            if cid == 0:
+            # Map class info based on number of classes detected in model
+            if num_classes == 3 and cid in OKRA_CLASSES:
+                c_info = OKRA_CLASSES[cid]
+                is_healthy = c_info["is_healthy"]
+                cls_name = c_info["name"]
+                color = c_info["color"]
+            elif num_classes == 8 and cid in TOMATO_CLASSES:
+                c_info = TOMATO_CLASSES[cid]
+                is_healthy = c_info["is_healthy"]
+                cls_name = c_info["name"]
+                color = c_info["color"]
+            elif num_classes == 2:
+                is_healthy = (cid == 0)
+                cls_name = "Healthy Leaf" if is_healthy else "Diseased / Stressed"
+                color = "#00e676" if is_healthy else "#ff1744"
+            else:
+                is_healthy = (cid == 0)
+                cls_name = f"Class {cid}"
+                color = "#00e676" if is_healthy else "#ff1744"
+                
+            if is_healthy:
                 healthy_count += 1
             else:
                 diseased_count += 1
+                disease_counts[cls_name] = disease_counts.get(cls_name, 0) + 1
                 
             # Scale coordinates back to original size
             x_center, y_center, w, h = box[0], box[1], box[2], box[3]
-            
             if is_normalized:
                 x1 = int((x_center - w / 2) * orig_w)
                 y1 = int((y_center - h / 2) * orig_h)
                 x2 = int((x_center + w / 2) * orig_w)
                 y2 = int((y_center + h / 2) * orig_h)
             else:
-                x1 = int((x_center - w / 2) * (orig_w / 640))
-                y1 = int((y_center - h / 2) * (orig_h / 640))
-                x2 = int((x_center + w / 2) * (orig_w / 640))
-                y2 = int((y_center + h / 2) * (orig_h / 640))
+                scale_x = orig_w / 640.0
+                scale_y = orig_h / 640.0
+                x1 = int((x_center - w / 2) * scale_x)
+                y1 = int((y_center - h / 2) * scale_y)
+                x2 = int((x_center + w / 2) * scale_x)
+                y2 = int((y_center + h / 2) * scale_y)
             
-            # Green border for healthy, Red border for diseased
-            color = "#00e676" if cid == 0 else "#ff1744"
+            # Clamp inside image
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(orig_w - 1, x2), min(orig_h - 1, y2)
+            
+            # Draw bounding box
             draw.rectangle([x1, y1, x2, y2], outline=color, width=4)
+            
+            # Draw label banner
+            label_text = f"{cls_name} ({int(conf * 100)}%)"
+            text_w = len(label_text) * 7 + 8
+            tag_y1 = max(0, y1 - 20)
+            draw.rectangle([x1, tag_y1, min(orig_w, x1 + text_w), y1], fill=color)
+            text_fill = "#000000" if color in ["#ffeb3b", "#00e676"] else "#ffffff"
+            draw.text((x1 + 4, tag_y1 + 2), label_text, fill=text_fill)
                 
+        # Generate detailed diagnostic summary
         if plant_count == 0:
-            diagnosis = "No plants detected in frame. Please adjust distance or camera angle."
+            diagnosis = "No leaves/plants detected in frame. Please adjust camera distance or lighting."
         elif diseased_count > 0:
             percentage = int((diseased_count / plant_count) * 100)
-            diagnosis = f"Detected {diseased_count} stressed/diseased crops (~{percentage}% of total detected)."
+            breakdown_list = [f"{cnt}x {dname}" for dname, cnt in disease_counts.items()]
+            breakdown_str = ", ".join(breakdown_list)
+            diagnosis = f"Detected {diseased_count} stressed/diseased instances (~{percentage}% of detected canopy). Breakdown: {breakdown_str}. ({healthy_count} healthy clusters)."
         else:
-            diagnosis = "Healthy growth. All detected crop clusters appear healthy and robust."
+            diagnosis = f"Healthy growth. All {plant_count} detected crop clusters appear healthy and vigorous with strong chlorophyll signatures."
+            
         return plant_count, diagnosis, image
 
     except Exception as e:
@@ -693,9 +777,9 @@ def run_yolo_count_and_diagnosis(image_file):
         return 0, f"Error processing model: {str(e)}", None
 
 
-def run_intervention_recommendation(diagnosis, model_choice="Llama 3.1 8B (Groq)", language_choice="🇲🇾 Bahasa Melayu"):
+def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa Melayu"):
     """
-    Calls Groq API (or Hugging Face serverless API for Qwen) to generate an actionable agronomist intervention.
+    Calls Groq API with Llama 3.1 8B (llama-3.1-8b-instant) to generate an actionable agronomist intervention.
     
     Returns:
         str: Recommended crop action plan
@@ -727,35 +811,6 @@ def run_intervention_recommendation(diagnosis, model_choice="Llama 3.1 8B (Groq)
             "Format your answer as a clean bullet-point list in simple farmer-friendly terms. Keep it under 3-4 bullet points."
         )
 
-    # 2. Check if Qwen (Hugging Face serverless) is selected
-    if model_choice == "Qwen 2.5 72B (Free HF)":
-        try:
-            url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct"
-            prompt_input = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\nDiagnosis: {diagnosis}<|im_end|>\n<|im_start|>assistant\n"
-            payload = {
-                "inputs": prompt_input,
-                "parameters": {"max_new_tokens": 250, "temperature": 0.2}
-            }
-            # Optional: use HF token if available in secrets
-            headers = {}
-            if "HF_TOKEN" in st.secrets:
-                headers["Authorization"] = f"Bearer {st.secrets['HF_TOKEN']}"
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=8)
-            if response.status_code == 200:
-                res_data = response.json()
-                if isinstance(res_data, list) and len(res_data) > 0:
-                    text = res_data[0].get("generated_text", "")
-                    if "assistant\n" in text:
-                        return text.split("assistant\n")[-1].strip()
-                    return text.strip()
-                elif isinstance(res_data, dict) and "generated_text" in res_data:
-                    return res_data["generated_text"].strip()
-        except Exception:
-            pass
-        st.warning("⚠️ Qwen 2.5 API is currently busy or rate-limited. Falling back to Groq Llama.")
-        model_choice = "Llama 3.1 8B (Groq)"
-
     # Mock response if Groq API key is missing
     if not api_key:
         st.markdown(
@@ -785,21 +840,22 @@ def run_intervention_recommendation(diagnosis, model_choice="Llama 3.1 8B (Groq)
             else:
                 return "- Continue regular moisture tracking and weekly canopy inspections.\n- Ensure solar panels are clean (dust runoff can alter soil salinity near panel edges)."
 
-    # Map model choice to Groq models
-    model_map = {
-        "Llama 3.1 8B (Groq)": "llama-3.1-8b-instant",
-        "Gemma 2 9B (Groq)": "gemma2-9b-it",
-        "Mixtral 8x7B (Groq)": "mixtral-8x7b-32768"
-    }
-    primary_model = model_map.get(model_choice, "llama-3.1-8b-instant")
-    fallback_model = "llama-3.1-8b-instant"
+    model_candidates = [
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "groq/compound-mini",
+        "groq/compound",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama3-8b-8192"
+    ]
     
-    try:
-        if HAS_GROQ_SDK:
-            client = Groq(api_key=api_key)
-            try:
+    for model_name in model_candidates:
+        try:
+            if HAS_GROQ_SDK:
+                client = Groq(api_key=api_key)
                 chat_completion = client.chat.completions.create(
-                    model=primary_model,
+                    model=model_name,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"Diagnosis: {diagnosis}"}
@@ -807,47 +863,38 @@ def run_intervention_recommendation(diagnosis, model_choice="Llama 3.1 8B (Groq)
                     temperature=0.2,
                     max_tokens=300
                 )
-                return chat_completion.choices[0].message.content
-            except Exception:
-                chat_completion = client.chat.completions.create(
-                    model=fallback_model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Diagnosis: {diagnosis}"}
-                    ],
-                    temperature=0.2,
-                    max_tokens=300
-                )
-                return chat_completion.choices[0].message.content
-        else:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": primary_model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Diagnosis: {diagnosis}"}
-                ],
-                "temperature": 0.2,
-                "max_tokens": 300
-            }
-            
-            response = requests.post(url, json=payload, timeout=10)
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"]
+                if chat_completion.choices and len(chat_completion.choices) > 0:
+                    content = chat_completion.choices[0].message.content
+                    if content and content.strip():
+                        return content.strip()
             else:
-                payload["model"] = fallback_model
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Diagnosis: {diagnosis}"}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 300
+                }
+                
                 response = requests.post(url, json=payload, timeout=10)
                 if response.status_code == 200:
-                    return response.json()["choices"][0]["message"]["content"]
-                else:
-                    return f"API Error (Status {response.status_code}): {response.text}"
-                    
-    except Exception as e:
-        return f"Intervention retrieval failed: {str(e)}"
+                    res_json = response.json()
+                    choices = res_json.get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "")
+                        if content and content.strip():
+                            return content.strip()
+        except Exception:
+            continue
+            
+    return "⚠️ Could not retrieve live intervention recommendation from Groq. Please check your API key and connection."
 
 
 # ---------------------------------------------------------------------
@@ -990,9 +1037,26 @@ def calculate_yield_prediction(crop_name, cc_pct, dli, temp, ec, density, plot_s
     return round(float(weight_per_head_g), 1), round(float(area_yield_kg_m2), 2), round(float(total_plot_yield_kg), 1), profile
 
 
-def generate_growth_scurve_data(crop_name):
+def get_crop_stage_badge(elapsed_days, harvest_start_day, harvest_end_day):
     """
-    Generates DOA Malaysia Sigmoid S-Curve dataframe for expected CC%.
+    Returns (stage_title, bg_color, text_color, advice_text) based on crop cycle day.
+    """
+    if elapsed_days <= 14:
+        return "🌱 Seedling / Early Emergence Stage", "#e8f5e9", "#2e7d32", "Focus on root establishment, gentle soil irrigation, and weed management."
+    elif elapsed_days <= 35:
+        return "🌿 Vegetative Canopy Expansion Stage", "#e3f2fd", "#1565c0", "Rapid leaf canopy growth phase. Monitor nitrogen fertigation and soil moisture."
+    elif elapsed_days < harvest_start_day:
+        return "🌼 Flowering & Fruit Set Stage", "#fff8e1", "#f57f17", "Crops blooming. Optimize phosphorus and potassium fertigation for optimal pod/fruit set."
+    elif harvest_start_day <= elapsed_days <= harvest_end_day:
+        return "🧺 Active Harvest Window", "#e8f5e9", "#1b5e20", "Optimal harvest window according to DOA guidelines! Pick ripe crop yield every 2 days."
+    else:
+        return "🍂 Late Harvest / Maturation Stage", "#fafafa", "#616161", "Final harvest cycle. Plan field clearing and land preparation for the next rotation."
+
+
+def generate_growth_scurve_data(crop_name, plot_id=None, cycle_start_str=None):
+    """
+    Generates DOA Malaysia Sigmoid S-Curve dataframe for expected CC%
+    and overlays actual historical canopy cover trajectory if plot_id is provided.
     """
     profile = CROP_PROFILES.get(crop_name, CROP_PROFILES["Bendi (Okra)"])
     days = list(range(0, profile["total_days"] + 1))
@@ -1003,12 +1067,37 @@ def generate_growth_scurve_data(crop_name):
     
     expected_cc = [cc_max / (1.0 + np.exp(-k * (d - t0))) for d in days]
     
-    df_chart = pd.DataFrame({
+    chart_data = {
         "Day": days,
-        "DOA Baseline (Expected CC%)": np.round(expected_cc, 1)
-    }).set_index("Day")
+        "DOA Baseline (Expected CC%)": [round(float(val), 1) for val in expected_cc]
+    }
     
+    # Query actual historical records if plot_id and cycle_start_str are provided
+    if plot_id and cycle_start_str:
+        try:
+            start_date = datetime.strptime(cycle_start_str, "%Y-%m-%d")
+            records = db_get_records(plot_id)
+            
+            actual_map = {}
+            for r in records:
+                if r.get("canopy_cover_pct") is not None:
+                    try:
+                        r_date = datetime.strptime(r["time"], "%Y-%m-%d %H:%M")
+                        elapsed = (r_date - start_date).days
+                        if 0 <= elapsed <= profile["total_days"]:
+                            actual_map[elapsed] = float(r["canopy_cover_pct"])
+                    except Exception:
+                        pass
+                        
+            if actual_map:
+                actual_series = [actual_map.get(d, None) for d in days]
+                chart_data["Actual Measured CC% (Plot History)"] = actual_series
+        except Exception:
+            pass
+            
+    df_chart = pd.DataFrame(chart_data).set_index("Day")
     return df_chart, profile
+
 
 
 # ---------------------------------------------------------------------
@@ -1049,16 +1138,7 @@ language_choice = st.sidebar.selectbox(
     ["🇲🇾 Bahasa Melayu", "🇬🇧 English"],
     index=0
 )
-model_choice = st.sidebar.selectbox(
-    "Select LLM Model",
-    [
-        "Llama 3.1 8B (Groq)",
-        "Gemma 2 9B (Groq)",
-        "Qwen 2.5 72B (Free HF)",
-        "Mixtral 8x7B (Groq)"
-    ],
-    index=0
-)
+st.sidebar.caption("⚡ **LLM Engine:** Groq Ultra-Fast LPU")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
@@ -1468,7 +1548,7 @@ elif view_mode == "📷 Plot Monitoring":
     if not selected_farm_obj or not selected_plot_obj:
         st.info("⚠️ Please select a Farm and Plot in the sidebar, or go to the **Registry & Management** view to register them.")
     else:
-        tab_record, tab_analysis, tab_monitor = st.tabs(["📷 Take / Upload Record", "📈 Growth & Yield Analysis", "📊 Plot History Log"])
+        tab_record, tab_monitor = st.tabs(["📷 Take / Upload Record", "📊 Plot History Log"])
         
         # --- TAB 1: RECORD NEW PLOT DATA ---
         with tab_record:
@@ -1499,11 +1579,26 @@ elif view_mode == "📷 Plot Monitoring":
             if image_file is not None:
                 st.markdown("---")
                 
+                # Vision Model Selector
+                available_models = ["🤖 Auto-Detect (Best Available Model)"]
+                if os.path.exists("models/best_(tomato_leaf_model).onnx"):
+                    available_models.append("🍅 Tomato & Solanaceae Disease (8 Classes)")
+                if os.path.exists("models/best_(okra_model).onnx"):
+                    available_models.append("🌿 Okra / Bendi Disease & Yellow Vein (3 Classes)")
+                if os.path.exists("models/yolov8_plant_detector.onnx"):
+                    available_models.append("🌱 General Plant Detector")
+                
+                selected_vision_model = st.selectbox(
+                    "🤖 Select AI Vision Model" if language_choice != "🇲🇾 Bahasa Melayu" else "🤖 Pilih Model Penglihatan AI",
+                    available_models,
+                    index=0
+                )
+                
                 # Display annotated image if available, else show raw image
                 if "temp_diagnosis" in st.session_state and "annotated_image" in st.session_state.temp_diagnosis and st.session_state.temp_diagnosis["annotated_image"] is not None:
                     st.image(
                         st.session_state.temp_diagnosis["annotated_image"], 
-                        caption="Annotated Crop Detections (Green = Healthy, Red = Diseased)", 
+                        caption="Annotated AI Detections (Multi-Class Disease, Stress & Healthy Leaves)", 
                         use_container_width=True
                     )
                 else:
@@ -1512,8 +1607,8 @@ elif view_mode == "📷 Plot Monitoring":
                 # Primary Action Button
                 if st.button("Diagnose Crop Health", type="primary"):
                     with st.spinner("Processing plant count & detecting abnormalities..."):
-                        bil_pokok, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file)
-                        intervention = run_intervention_recommendation(diagnosis, model_choice, language_choice)
+                        bil_pokok, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file, model_preference=selected_vision_model)
+                        intervention = run_intervention_recommendation(diagnosis, language_choice=language_choice)
                     
                     st.success("Diagnosis Complete!")
                     
@@ -1568,13 +1663,18 @@ elif view_mode == "📷 Plot Monitoring":
                     # Save Action Button
                     if st.button("💾 Save Record to Plot Log"):
                         time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                        
+                        # Save uploaded image to disk
+                        saved_img_path = save_uploaded_image(image_file, selected_plot_obj["id"])
+                        
                         success, msg = db_add_record(
                             selected_plot_obj["id"],
                             time_str,
                             res["bil_pokok"],
                             res["diagnosis"],
                             res["intervention"],
-                            notes
+                            notes,
+                            image_path=saved_img_path
                         )
                         if success:
                             # Clean temporary workspace
@@ -1597,163 +1697,7 @@ elif view_mode == "📷 Plot Monitoring":
                     unsafe_allow_html=True
                 )
 
-        # --- TAB 2: GROWTH & YIELD ANALYSIS (Visual NDVI GLI, Sliders & DOA S-Curves) ---
-        with tab_analysis:
-            st.markdown("### 📈 Crop Growth & Yield Analysis")
-            st.caption(f"Visual NDVI (Green Leaf Index) canopy segmentation, interactive yield prediction, and DOA growth curves for **{selected_plot_obj['plot_name']}**.")
-            
-            # Auto-detect plot crop type or allow selection
-            registered_crops = db_get_plants(selected_plot_obj["id"])
-            default_crop_name = registered_crops[0]["name"] if registered_crops else "Bendi (Okra)"
-            
-            crop_options = list(CROP_PROFILES.keys())
-            matching_idx = 0
-            for idx, cname in enumerate(crop_options):
-                if default_crop_name.lower() in cname.lower():
-                    matching_idx = idx
-                    break
-                    
-            selected_crop_profile_name = st.selectbox(
-                "🌾 Select Target Crop Profile",
-                options=crop_options,
-                index=matching_idx,
-                help="Select your crop variety to load DOA Malaysia growth curves and optimal environmental benchmarks."
-            )
-            
-            st.markdown("---")
-            st.markdown("#### 1. Visual NDVI & Canopy Cover % (GLI Analysis)")
-            st.caption("Segments green crop leaves from soil and calculates exact Canopy Cover % (CC %).")
-            
-            analysis_img_file = camera_img or uploaded_img
-            
-            col_img1, col_img2 = st.columns(2)
-            
-            if analysis_img_file is not None:
-                canopy_cc_pct, heatmap_pil = process_visual_ndvi_gli(analysis_img_file)
-                with col_img1:
-                    st.image(analysis_img_file, caption="Original Canopy Photo", use_container_width=True)
-                with col_img2:
-                    st.image(heatmap_pil, caption="Visual NDVI Heatmap (Green = Vegetation, Brown = Soil)", use_container_width=True)
-            else:
-                with col_img1:
-                    st.info("📷 Upload or capture a photo in the **Take / Upload Record** tab to process your live canopy frame.")
-                with col_img2:
-                    st.markdown(
-                        """
-                        <div style="background-color: #f1f8e9; border: 1px dashed #81c784; border-radius: 12px; padding: 1.5rem; text-align: center; color: #2e7d32;">
-                            <h4 style="margin: 0;">🌱 Simulation Mode Active</h4>
-                            <p style="font-size: 0.85rem; margin-top: 4px;">Using default benchmark canopy cover until a photo is uploaded.</p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                canopy_cc_pct = 42.5  # Benchmark default when no image uploaded
-            
-            # Display Canopy Cover % Metric Card
-            st.markdown(
-                f"""
-                <div class="custom-metric" style="background-color: #e8f5e9; border-color: #a5d6a7;">
-                    <div class="custom-metric-val">{canopy_cc_pct}%</div>
-                    <div class="custom-metric-lbl">Measured Canopy Cover (CC %)</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            
-            st.markdown("---")
-            st.markdown("#### 2. Agrivoltaic Environment & Density Sliders")
-            st.caption("Adjust microclimate variables to run mathematical yield regression models.")
-            
-            prof = CROP_PROFILES[selected_crop_profile_name]
-            
-            col_s1, col_s2 = st.columns(2)
-            with col_s1:
-                input_dli = st.slider(
-                    "☀️ Daily Light Integral - DLI (mol/m²/day)",
-                    min_value=5.0, max_value=30.0,
-                    value=float(prof["opt_dli"]), step=0.5,
-                    help="Optimal DLI for this crop is ~" + str(prof["opt_dli"]) + " mol/m²/day."
-                )
-                input_temp = st.slider(
-                    "🌡️ Air Temperature (°C)",
-                    min_value=20.0, max_value=40.0,
-                    value=float(prof["opt_temp"]), step=0.5,
-                    help="Optimal temp is ~" + str(prof["opt_temp"]) + " °C."
-                )
-            with col_s2:
-                input_ec = st.slider(
-                    "🧪 Soil / Fertilizer EC (mS/cm)",
-                    min_value=0.5, max_value=4.0,
-                    value=float(prof["opt_ec"]), step=0.1,
-                    help="Optimal EC is ~" + str(prof["opt_ec"]) + " mS/cm."
-                )
-                input_density = st.slider(
-                    "🌱 Plant Density (plants/m²)",
-                    min_value=1.0, max_value=20.0,
-                    value=float(prof["default_density"]), step=0.5
-                )
-            
-            # Calculate Yield Predictions
-            plot_sqft = float(selected_plot_obj["size_sq_ft"]) if selected_plot_obj and selected_plot_obj.get("size_sq_ft") else 1000.0
-            weight_g, area_yield_kg_m2, total_plot_kg, prof = calculate_yield_prediction(
-                selected_crop_profile_name, canopy_cc_pct, input_dli, input_temp, input_ec, input_density, plot_sqft
-            )
-            
-            st.markdown("##### 📊 Predicted Harvest Yields")
-            col_m1, col_m2, col_m3 = st.columns(3)
-            with col_m1:
-                st.markdown(
-                    f"""
-                    <div class="result-card neutral">
-                        <div class="card-title">⚖️ Weight per Head</div>
-                        <div style="font-size: 1.6rem; font-weight: 700; color: #1565c0;">{weight_g} g/plant</div>
-                        <div style="font-size: 0.8rem; color: #555;">Est. single plant harvest weight</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            with col_m2:
-                st.markdown(
-                    f"""
-                    <div class="result-card neutral">
-                        <div class="card-title">📐 Area Yield Rate</div>
-                        <div style="font-size: 1.6rem; font-weight: 700; color: #2e7d32;">{area_yield_kg_m2} kg/m²</div>
-                        <div style="font-size: 0.8rem; color: #555;">Yield density per square meter</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            with col_m3:
-                st.markdown(
-                    f"""
-                    <div class="result-card alert">
-                        <div class="card-title">🚜 Total Plot Yield</div>
-                        <div style="font-size: 1.6rem; font-weight: 700; color: #e65100;">{total_plot_kg} kg</div>
-                        <div style="font-size: 0.8rem; color: #555;">Est. total for {selected_plot_obj['plot_name']} ({plot_sqft:,.0f} sq ft)</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-                
-            st.markdown("---")
-            st.markdown("#### 3. DOA Malaysia Growth Curve Comparison (Sigmoid S-Curve)")
-            st.caption("Compares expected baseline canopy growth trajectory against actual days elapsed in cycle.")
-            
-            # Calculate elapsed days in plot cycle
-            try:
-                start_date = datetime.strptime(selected_plot_obj["cycle_start"], "%Y-%m-%d")
-                elapsed_days = (datetime.now() - start_date).days
-                elapsed_days = max(0, min(elapsed_days, prof["total_days"]))
-            except Exception:
-                elapsed_days = 25
-                
-            df_scurve, prof = generate_growth_scurve_data(selected_crop_profile_name)
-            
-            st.line_chart(df_scurve, height=300)
-            
-            st.info(f"ℹ️ **DOA Benchmark Info for {selected_crop_profile_name}:** First harvest window begins between **Day {prof['harvest_start_day']} and Day {prof['harvest_end_day']}**. Current plot timeline: **Day {elapsed_days}**.")
-
-        # --- TAB 3: HISTORY LOG & MONITORING ---
+        # --- TAB 2: HISTORY LOG & MONITORING ---
         with tab_monitor:
             st.markdown(f"### Historical Logs for {selected_plot_obj['plot_name']}")
             st.caption("Review past diagnosis, counts, and recommended actions logged for this plot.")
@@ -1775,8 +1719,12 @@ elif view_mode == "📷 Plot Monitoring":
                 # Display history
                 for r in plot_records:
                     expander_label = f"📅 {r['time']}  |  🌱 Count: {r['bil_pokok']} Plants"
+                    if r.get("canopy_cover_pct") is not None:
+                        expander_label += f"  |  🌿 CC: {r['canopy_cover_pct']}%"
                     
                     with st.expander(expander_label):
+                        if r.get("image_path") and os.path.exists(r["image_path"]):
+                            st.image(r["image_path"], caption="Logged Canopy Photo", use_container_width=True)
                         st.markdown(f"**🔍 Diagnosis:** {r['diagnosis']}")
                         st.markdown(f"**💡 Recommended Intervention:**\n{r['intervention']}")
                         
@@ -1794,3 +1742,4 @@ elif view_mode == "📷 Plot Monitoring":
                                     st.rerun()
                                 else:
                                     st.error(m)
+
