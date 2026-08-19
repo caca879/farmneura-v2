@@ -10,7 +10,7 @@ Run with: streamlit run farmneura_farmer_draft.py
 """
 
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
 import random
 import sqlite3
@@ -18,6 +18,14 @@ import pandas as pd
 
 import numpy as np
 from PIL import Image, ImageDraw
+
+# Malaysia Timezone (UTC+8) helper for Streamlit Cloud deployment
+MYT = timezone(timedelta(hours=8))
+
+def get_now_myt():
+    """Returns current datetime in Malaysia Timezone (UTC+8)."""
+    return datetime.now(MYT)
+
 
 # Optional ONNX Runtime import for YOLO inference
 try:
@@ -454,7 +462,8 @@ def save_uploaded_image(image_input, plot_id):
     if not os.path.exists(uploads_dir):
         os.makedirs(uploads_dir)
         
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = get_now_myt().strftime("%Y%m%d_%H%M%S")
+
     filename = f"plot_{plot_id}_{timestamp}.png"
     filepath = os.path.join(uploads_dir, filename)
     
@@ -871,7 +880,8 @@ def fetch_simulated_iot_telemetry(plot_id=1):
     """
     import random
     seed_val = int(plot_id) if plot_id else 1
-    t_now = datetime.now()
+    t_now = get_now_myt()
+
     random.seed(seed_val + t_now.minute)
     
     moisture = round(random.uniform(28.0, 68.0), 1)
@@ -1351,7 +1361,7 @@ st.markdown(
 # Render View: OVERVIEW
 if view_mode == "📋 Overview":
     # 1. Greeting & Microclimate Header
-    current_hour = datetime.now().hour
+    current_hour = get_now_myt().hour
     if current_hour < 12:
         greeting_text = "Good Morning, Farmer"
     elif current_hour < 18:
@@ -1384,7 +1394,7 @@ if view_mode == "📋 Overview":
         healthy_count = 0
         
         plot_status_list = []
-        today = datetime.now()
+        today = get_now_myt()
         
         for plot in plots_data:
             latest_rec = db_get_latest_record(plot["id"])
@@ -2005,7 +2015,8 @@ elif view_mode == "📷 Plot Monitoring":
                     
                     # Save Action Button
                     if st.button("💾 Save Record to Plot Log"):
-                        time_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                        time_str = get_now_myt().strftime("%Y-%m-%d %H:%M")
+
                         
                         # Save uploaded image to disk
                         saved_img_path = save_uploaded_image(image_file, selected_plot_obj["id"])
