@@ -2,7 +2,7 @@
 FarmNeura v2 - Plot Monitoring UI (Phase 1, Module 4)
 Scope: Farmer role only.
     - Mobile-friendly, high-contrast, premium farmer UI for field use.
-    - Take/upload picture -> run YOLOv8 ONNX (plant count & health diagnosis)
+    - Take/upload picture -> run YOLOv8 ONNX (leaf count & health diagnosis)
     - View agronomist-style intervention recommendations via Groq API (Llama-4-Scout)
     - Save and view past historical records per plot
 
@@ -36,6 +36,43 @@ except ImportError:
     HAS_GROQ_SDK = False
     import requests
 
+try:
+    import markdown
+    HAS_MARKDOWN = True
+except ImportError:
+    HAS_MARKDOWN = False
+
+def render_markdown_to_html(md_text):
+    if not md_text:
+        return ""
+    if HAS_MARKDOWN:
+        return markdown.markdown(md_text.strip())
+    
+    # Fallback simple formatter
+    import re
+    lines = md_text.strip().split("\n")
+    html_lines = []
+    in_list = False
+    for line in lines:
+        sline = line.strip()
+        if sline.startswith("- ") or sline.startswith("* "):
+            if not in_list:
+                html_lines.append("<ul>")
+                in_list = True
+            content = sline[2:]
+            content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+            html_lines.append(f"<li>{content}</li>")
+        else:
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', sline)
+            if content:
+                html_lines.append(f"<p>{content}</p>")
+    if in_list:
+        html_lines.append("</ul>")
+    return "".join(html_lines)
+
 # Set page config
 st.set_page_config(
     page_title="FarmNeura - Plot Monitoring",
@@ -45,8 +82,9 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------
-# CUSTOM STYLING (Agri-Solar Forest Green & Warm Yellow Theme)
+# CUSTOM STYLING (Precision Ag Forest Green & Warm Yellow Theme)
 # ---------------------------------------------------------------------
+
 st.markdown(
     """
     <style>
@@ -109,7 +147,19 @@ st.markdown(
     .card-text {
         font-size: 0.95rem;
         color: #37474f !important;
-        line-height: 1.5;
+        line-height: 1.55;
+    }
+    .card-text ul, .card-text ol {
+        margin: 0.3rem 0;
+        padding-left: 1.25rem;
+    }
+    .card-text li {
+        margin-bottom: 0.4rem;
+        color: #37474f;
+    }
+    .card-text p {
+        margin-bottom: 0.4rem;
+        margin-top: 0;
     }
 
     /* Metric Layout Card */
@@ -258,7 +308,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         plot_id INTEGER NOT NULL,
         time TEXT NOT NULL,
-        bil_pokok INTEGER NOT NULL,
+        bil_daun INTEGER NOT NULL,
         diagnosis TEXT NOT NULL,
         intervention TEXT NOT NULL,
         notes TEXT,
@@ -271,6 +321,10 @@ def init_db():
     # Auto-migration check for existing databases
     cursor.execute("PRAGMA table_info(monitoring_records)")
     columns = [col[1] for col in cursor.fetchall()]
+    if "bil_daun" not in columns:
+        cursor.execute("ALTER TABLE monitoring_records ADD COLUMN bil_daun INTEGER")
+        if "bil_pokok" in columns:
+            cursor.execute("UPDATE monitoring_records SET bil_daun = bil_pokok WHERE bil_daun IS NULL")
     if "canopy_cover_pct" not in columns:
         cursor.execute("ALTER TABLE monitoring_records ADD COLUMN canopy_cover_pct REAL")
     if "image_path" not in columns:
@@ -291,16 +345,16 @@ def init_db():
         
         # Plots for Farm A
         cursor.execute("INSERT INTO plots (farm_id, plot_name, size_sq_ft, cycle_start, cycle_end, cost_records, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (farm_a_id, "Plot 1", 12000.0, "2026-06-01", "2026-08-30", 1500.0, "Under Solar Array Section A"))
+                       (farm_a_id, "Plot 1", 12000.0, "2026-06-01", "2026-08-30", 1500.0, "Field Sector Section A"))
         plot_1_id = cursor.lastrowid
         cursor.execute("INSERT INTO plots (farm_id, plot_name, size_sq_ft, cycle_start, cycle_end, cost_records, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (farm_a_id, "Plot 2", 15000.0, "2026-06-15", "2026-09-15", 1850.0, "Under Solar Array Section B"))
+                       (farm_a_id, "Plot 2", 15000.0, "2026-06-15", "2026-09-15", 1850.0, "Field Sector Section B"))
         cursor.execute("INSERT INTO plots (farm_id, plot_name, size_sq_ft, cycle_start, cycle_end, cost_records, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (farm_a_id, "Plot 3", 10000.0, "2026-07-01", "2026-10-01", 1200.0, "Under Solar Array Section C"))
+                       (farm_a_id, "Plot 3", 10000.0, "2026-07-01", "2026-10-01", 1200.0, "Field Sector Section C"))
         
         # Plots for Farm B
         cursor.execute("INSERT INTO plots (farm_id, plot_name, size_sq_ft, cycle_start, cycle_end, cost_records, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (farm_b_id, "Plot 1", 20000.0, "2026-05-10", "2026-08-10", 2500.0, "Open canopy layout"))
+                       (farm_b_id, "Plot 1", 20000.0, "2026-05-10", "2026-08-10", 2500.0, "Open field layout"))
         cursor.execute("INSERT INTO plots (farm_id, plot_name, size_sq_ft, cycle_start, cycle_end, cost_records, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
                        (farm_b_id, "Plot 2", 25000.0, "2026-05-20", "2026-08-20", 3000.0, "High shade index rows"))
         
@@ -308,10 +362,17 @@ def init_db():
         cursor.execute("INSERT INTO plants (plot_id, name) VALUES (?, ?)", (plot_1_id, "Pakchoy"))
         
         # Diagnosis Logs (Module 4) for Plot 1
-        cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?)",
-                       (plot_1_id, "2026-07-28 09:30", 45, "Healthy crops. Robust growth with standard green leaf index.", "Continue normal irrigation schedule. Apply NPK fertilizer at next scheduled cycle.", "Visual check under Solar Array Row B."))
-        cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?)",
-                       (plot_1_id, "2026-07-29 14:15", 42, "Mild leaf chlorosis detected (yellowing of leaves on 10% of crop canopy).", "Verify soil pH levels. Recommend localized nitrogen boost fertilizer to restore chlorophyll content.", "Observed near inverter box #3."))
+        cols_now = [c[1] for c in cursor.execute("PRAGMA table_info(monitoring_records)").fetchall()]
+        if "bil_daun" in cols_now and "bil_pokok" in cols_now:
+            cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_daun, bil_pokok, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                           (plot_1_id, "2026-07-28 09:30", 45, 45, "Healthy crops. Robust growth with standard green leaf index.", "Continue normal irrigation schedule. Apply NPK fertilizer at next scheduled cycle.", "Visual check at Field Sector B."))
+            cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_daun, bil_pokok, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                           (plot_1_id, "2026-07-29 14:15", 42, 42, "Mild leaf chlorosis detected (yellowing of leaves on 10% of crop canopy).", "Verify soil pH levels. Recommend localized nitrogen boost fertilizer to restore chlorophyll content.", "Observed near Irrigation Valve #3."))
+        else:
+            cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_daun, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?)",
+                           (plot_1_id, "2026-07-28 09:30", 45, "Healthy crops. Robust growth with standard green leaf index.", "Continue normal irrigation schedule. Apply NPK fertilizer at next scheduled cycle.", "Visual check at Field Sector B."))
+            cursor.execute("INSERT INTO monitoring_records (plot_id, time, bil_daun, diagnosis, intervention, notes) VALUES (?, ?, ?, ?, ?, ?)",
+                           (plot_1_id, "2026-07-29 14:15", 42, "Mild leaf chlorosis detected (yellowing of leaves on 10% of crop canopy).", "Verify soil pH levels. Recommend localized nitrogen boost fertilizer to restore chlorophyll content.", "Observed near Irrigation Valve #3."))
         
         conn.commit()
     conn.close()
@@ -377,7 +438,13 @@ def db_get_records(plot_id):
     conn = get_db_connection()
     records = conn.execute("SELECT * FROM monitoring_records WHERE plot_id = ? ORDER BY time DESC", (plot_id,)).fetchall()
     conn.close()
-    return [dict(r) for r in records]
+    result = []
+    for r in records:
+        d = dict(r)
+        if "bil_daun" not in d or d["bil_daun"] is None:
+            d["bil_daun"] = d.get("bil_pokok", 0)
+        result.append(d)
+    return result
 
 def save_uploaded_image(image_input, plot_id):
     """
@@ -401,13 +468,28 @@ def save_uploaded_image(image_input, plot_id):
     except Exception:
         return None
 
-def db_add_record(plot_id, time, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct=None, image_path=None):
+def db_add_record(plot_id, time, bil_daun, diagnosis, intervention, notes, canopy_cover_pct=None, image_path=None):
     try:
         conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (plot_id, time, bil_pokok, diagnosis, intervention, notes.strip() if notes else "", canopy_cover_pct, image_path)
-        )
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(monitoring_records)")
+        cols = [c[1] for c in cursor.fetchall()]
+        
+        if "bil_daun" in cols and "bil_pokok" in cols:
+            cursor.execute(
+                "INSERT INTO monitoring_records (plot_id, time, bil_daun, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (plot_id, time, bil_daun, bil_daun, diagnosis, intervention, notes.strip() if notes else "", canopy_cover_pct, image_path)
+            )
+        elif "bil_daun" in cols:
+            cursor.execute(
+                "INSERT INTO monitoring_records (plot_id, time, bil_daun, diagnosis, intervention, notes, canopy_cover_pct, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (plot_id, time, bil_daun, diagnosis, intervention, notes.strip() if notes else "", canopy_cover_pct, image_path)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO monitoring_records (plot_id, time, bil_pokok, diagnosis, intervention, notes, canopy_cover_pct, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (plot_id, time, bil_daun, diagnosis, intervention, notes.strip() if notes else "", canopy_cover_pct, image_path)
+            )
         conn.commit()
         conn.close()
         return True, "Record successfully saved!"
@@ -436,7 +518,12 @@ def db_get_latest_record(plot_id):
         (plot_id,)
     ).fetchone()
     conn.close()
-    return dict(row) if row else None
+    if row:
+        d = dict(row)
+        if "bil_daun" not in d or d["bil_daun"] is None:
+            d["bil_daun"] = d.get("bil_pokok", 0)
+        return d
+    return None
 
 # --- CRUD Operations (Update & Delete) ---
 def db_update_farm(farm_id, name, location, size):
@@ -568,11 +655,11 @@ def simple_numpy_nms(boxes, scores, iou_threshold=0.45):
 
 def run_yolo_count_and_diagnosis(image_file, model_preference="Auto"):
     """
-    Runs a YOLOv8 ONNX model to count plants and diagnose their condition.
+    Runs a YOLOv8 ONNX model to count leaves and diagnose crop health condition.
     Supports Tomato Disease (8 classes), Okra/Bendi Disease (3 classes), and generic detectors.
     
     Returns:
-        tuple: (bil_pokok: int, diagnosis: str, annotated_image: PIL.Image)
+        tuple: (leaf_count: int, diagnosis: str, annotated_image: PIL.Image)
     """
     # Select appropriate model path
     if "Okra" in model_preference and os.path.exists("models/best_(okra_model).onnx"):
@@ -641,10 +728,10 @@ def run_yolo_count_and_diagnosis(image_file, model_preference="Auto"):
             draw.rectangle([x1, y1, x2, y2], outline=color, width=4)
             
         diagnoses = [
-            "🟢 Healthy growth. Robust chlorophyll distribution across canopy rows.",
-            "⚠️ Mild leaf chlorosis detected (~15% of plants) - suspected nitrogen deficiency.",
-            "🔴 Early stage Septoria leaf spot detected on 3 lower-canopy crop clusters.",
-            "🟠 Mild wilting / water stress noticed along outer crop border."
+            "🟢 Healthy growth. Robust chlorophyll distribution across detected leaves.",
+            "⚠️ Mild leaf chlorosis detected (~15% of foliage) - suspected nitrogen deficiency.",
+            "🔴 Early stage Septoria leaf spot detected on 3 lower-canopy leaves.",
+            "🟠 Mild leaf wilting / water stress noticed along outer foliage border."
         ]
         return simulated_count, random.choice(diagnoses), image
     
@@ -689,7 +776,7 @@ def run_yolo_count_and_diagnosis(image_file, model_preference="Auto"):
         
         # Apply Non-Maximum Suppression (NMS)
         keep_indices = simple_numpy_nms(filtered_boxes, filtered_scores, iou_threshold=0.45)
-        plant_count = len(keep_indices)
+        leaf_count = len(keep_indices)
         
         draw = ImageDraw.Draw(image)
         is_normalized = (np.max(filtered_boxes) <= 1.01) if len(filtered_boxes) > 0 else False
@@ -760,26 +847,52 @@ def run_yolo_count_and_diagnosis(image_file, model_preference="Auto"):
             draw.text((x1 + 4, tag_y1 + 2), label_text, fill=text_fill)
                 
         # Generate detailed diagnostic summary
-        if plant_count == 0:
-            diagnosis = "No leaves/plants detected in frame. Please adjust camera distance or lighting."
+        if leaf_count == 0:
+            diagnosis = "No leaves detected in frame. Please adjust camera distance or lighting."
         elif diseased_count > 0:
-            percentage = int((diseased_count / plant_count) * 100)
+            percentage = int((diseased_count / leaf_count) * 100)
             breakdown_list = [f"{cnt}x {dname}" for dname, cnt in disease_counts.items()]
             breakdown_str = ", ".join(breakdown_list)
-            diagnosis = f"Detected {diseased_count} stressed/diseased instances (~{percentage}% of detected canopy). Breakdown: {breakdown_str}. ({healthy_count} healthy clusters)."
+            diagnosis = f"Detected {diseased_count} stressed/diseased leaves (~{percentage}% of detected foliage). Breakdown: {breakdown_str}. ({healthy_count} healthy leaves)."
         else:
-            diagnosis = f"Healthy growth. All {plant_count} detected crop clusters appear healthy and vigorous with strong chlorophyll signatures."
+            diagnosis = f"Healthy growth. All {leaf_count} detected leaves appear healthy and vigorous with strong chlorophyll signatures."
             
-        return plant_count, diagnosis, image
+        return leaf_count, diagnosis, image
 
     except Exception as e:
         st.error(f"Inference Error: {str(e)}")
         return 0, f"Error processing model: {str(e)}", None
 
 
-def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa Melayu"):
+def fetch_simulated_iot_telemetry(plot_id=1):
     """
-    Calls Groq API with Llama 3.1 8B (llama-3.1-8b-instant) to generate an actionable agronomist intervention.
+    Simulates fetching real-time IoT sensor telemetry from a Cloud IoT Server (Firebase/MQTT/ThingSpeak).
+    Returns a dict with sensor readings: timestamp, air_temp, soil_moisture, soil_ec, soil_ph, server_status.
+    """
+    import random
+    seed_val = int(plot_id) if plot_id else 1
+    t_now = datetime.now()
+    random.seed(seed_val + t_now.minute)
+    
+    moisture = round(random.uniform(28.0, 68.0), 1)
+    temp = round(random.uniform(28.0, 34.5), 1)
+    ec = round(random.uniform(0.9, 2.3), 2)
+    ph = round(random.uniform(5.9, 6.7), 2)
+    
+    return {
+        "timestamp": t_now.strftime("%Y-%m-%d %H:%M:%S"),
+        "air_temp": temp,
+        "soil_moisture": moisture,
+        "soil_ec": ec,
+        "soil_ph": ph,
+        "server_status": "🟢 ONLINE (Connected to Cloud IoT Broker)"
+    }
+
+
+def run_intervention_recommendation(diagnosis, iot_telemetry=None, language_choice="🇲🇾 Bahasa Melayu"):
+    """
+    Calls Groq API with Llama 3.1 8B (llama-3.1-8b-instant) combining YOLOv8 Vision Diagnosis 
+    with Cloud IoT Sensor Telemetry to generate a holistic agronomist intervention plan.
     
     Returns:
         str: Recommended crop action plan
@@ -794,21 +907,33 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
 
     if not api_key:
         api_key = os.environ.get("GROQ_API_KEY")
+        
+    # Format IoT Telemetry for LLM Prompt Fusion
+    iot_text = ""
+    if iot_telemetry:
+        moist_status = "DEFICIT (Dry Soil)" if iot_telemetry['soil_moisture'] < 40 else ("OPTIMAL" if iot_telemetry['soil_moisture'] <= 70 else "SATURATED (Overwatered)")
+        ec_status = "LOW (Fertilizer Deficit)" if iot_telemetry['soil_ec'] < 1.4 else ("OPTIMAL" if iot_telemetry['soil_ec'] <= 2.2 else "HIGH Salinity")
+        
+        iot_text = (
+            f"\n\n[CLOUD IOT SENSOR TELEMETRY]:\n"
+            f"- Soil Moisture: {iot_telemetry['soil_moisture']}% ({moist_status})\n"
+            f"- Air Temperature: {iot_telemetry['air_temp']} °C\n"
+            f"- Soil EC (Fertility): {iot_telemetry['soil_ec']} mS/cm ({ec_status})\n"
+            f"- Soil pH: {iot_telemetry['soil_ph']}"
+        )
     
     # 1. Standard Prompt configuration based on language preference
     if language_choice == "🇲🇾 Bahasa Melayu":
         system_prompt = (
-            "Anda adalah ejen pertanian jitu FarmNeura, seorang agronomis profesional yang pakar dalam bidang agrivoltaik (penanaman tanaman di bawah panel solar) dan sayuran daun brassica, terutamanya Sawi Pakchoy.\n"
-            "Sediakan senarai cadangan tindakan agronomis yang sangat praktikal dan ringkas untuk petani berdasarkan diagnosis yang diberikan.\n"
-            "Ambil kira faktor persekitaran agrivoltaik (contohnya, air larian hujan dari panel solar, kelembapan tanah di bawah teduhan solar, dan pH tanah akibat pembersihan panel).\n"
-            "Formatkan jawapan anda dalam bentuk senarai peluru (bullet-point) dalam Bahasa Melayu yang mudah difahami oleh petani tempatan. Hadkan cadangan di bawah 3-4 mata sahaja."
+            "Anda adalah ejen pertanian jitu FarmNeura, seorang agronomis profesional yang pakar dalam penggabungan data visi komputer (YOLOv8) dan data sensor IoT Awan (Cloud IoT Telemetry).\n"
+            "Analisis kedua-dua simptom visual kanopi dan bacaan sensor IoT untuk memberikan cadangan tindakan pemulihan yang tepat dan praktikal.\n"
+            "Formatkan jawapan anda dalam bentuk senarai peluru (bullet-point) Bahasa Melayu yang ringkas (3-4 mata sahaja)."
         )
     else:
         system_prompt = (
-            "You are FarmNeura's precision agricultural agent, a professional agronomist specializing in agrivoltaics (crops grown under solar panel arrays) and leafy green brassicas, specifically Pakchoy.\n"
-            "Provide a highly actionable, concise list of agronomist recommendations for the farmer based on the provided diagnosis.\n"
-            "Take into consideration agrivoltaic environmental factors (e.g., panel rain runoff lines, altered soil shade humidity, and panel-washing runoff pH values).\n"
-            "Format your answer as a clean bullet-point list in simple farmer-friendly terms. Keep it under 3-4 bullet points."
+            "You are FarmNeura's precision agricultural agent, a professional agronomist specializing in multimodal data fusion (combining YOLOv8 vision diagnoses with Cloud IoT sensor telemetry).\n"
+            "Analyze both the visual leaf symptoms and the cloud sensor readings to provide precise, root-cause agronomic intervention steps.\n"
+            "Format your answer as a clean bullet-point list in simple farmer-friendly terms (3-4 points max)."
         )
 
     # Mock response if Groq API key is missing
@@ -825,20 +950,22 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
             unsafe_allow_html=True
         )
         d_lower = diagnosis.lower()
+        m_val = iot_telemetry['soil_moisture'] if iot_telemetry else 50.0
+        
         if language_choice == "🇲🇾 Bahasa Melayu":
-            if "nitrogen" in d_lower or "chlorosis" in d_lower or "yellowing" in d_lower:
-                return "- Sembur baja cecair nitrogen (seperti urea atau ekstrak rumpai laut organik) pada waktu senja.\n- Periksa tahap kelembapan tanah pada kedalaman akar.\n- Periksa panel solar di atas untuk memastikan limpahan air tidak menghakis nutrien tanah."
-            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower or "stressed" in d_lower:
-                return "- Sembur minyak neem organik atau racun kulat berasaskan tembaga yang disyorkan pada kawasan terjejas.\n- Buang daun bawah yang berpenyakit untuk mencegah penyebaran spora.\n- Pastikan teduhan panel solar tidak perangkap kelembapan berlebihan semalaman."
+            if m_val < 40 or "chlorosis" in d_lower or "nitrogen" in d_lower:
+                return f"- **Diagnosis Gabungan (Visi + IoT)**: Klorosis dikesan oleh YOLOv8 dan disahkan oleh bacaan sensor IoT Awan (Kelembapan tanah rendah: {m_val}%).\n- Sembur baja cecair nitrogen dan mulakan penyiraman titis selama 20 minit.\n- Periksa tahap kedalaman akar untuk elakkan tekanan haba."
+            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower:
+                return f"- **Diagnosis Gabungan (Visi + IoT)**: Jangkitan kulat kanopi dikesan. Sensor IoT menunjukkan kelembapan: {m_val}%.\n- Sembur racun kulat berasaskan tembaga atau minyak neem organik pada barisan terjejas.\n- Tingkatkan pengudaraan kanopi bawah."
             else:
-                return "- Teruskan pemantauan kelembapan tanah dan pemeriksaan kanopi mingguan.\n- Pastikan panel solar bersih (air basuhan berhabuk boleh mengubah kemasinan tanah berhampiran panel)."
+                return f"- **Diagnosis Gabungan (Visi + IoT)**: Kesihatan kanopi dan bacaan sensor IoT berada pada tahap optimum (Kelembapan: {m_val}%, EC: {iot_telemetry['soil_ec'] if iot_telemetry else 1.8} mS/cm).\n- Teruskan jadual pemantauan biasa."
         else:
-            if "nitrogen" in d_lower or "chlorosis" in d_lower or "yellowing" in d_lower:
-                return "- Apply a nitrogen-rich liquid fertilizer (e.g. urea or organic seaweed extract) at sunset.\n- Test soil moisture levels at root depth.\n- Inspect solar panels above to verify rain runoff isn't causing localized soil leaching."
-            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower or "stressed" in d_lower:
-                return "- Spray organic neem oil or recommended copper-based fungicide to affected canopy rows.\n- Prune diseased lower leaves to prevent spore transmission.\n- Ensure solar panel shading is not trapping excessive humidity overnight."
+            if m_val < 40 or "chlorosis" in d_lower or "nitrogen" in d_lower:
+                return f"- **Multimodal Fusion (Vision + IoT)**: Leaf chlorosis detected by YOLOv8 and confirmed by Cloud IoT Telemetry (Low Soil Moisture: {m_val}%).\n- Apply nitrogen liquid fertigation and initiate 20-min drip irrigation cycle.\n- Monitor root depth moisture to alleviate thermal stress."
+            elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower:
+                return f"- **Multimodal Fusion (Vision + IoT)**: Foliage fungal infection detected. Cloud IoT sensor moisture reading: {m_val}%.\n- Spray copper-based fungicide or neem oil to affected crop rows.\n- Prune lower canopy leaves to improve airflow."
             else:
-                return "- Continue regular moisture tracking and weekly canopy inspections.\n- Ensure solar panels are clean (dust runoff can alter soil salinity near panel edges)."
+                return f"- **Multimodal Fusion (Vision + IoT)**: Canopy condition and Cloud IoT sensor readings are optimal (Moisture: {m_val}%, EC: {iot_telemetry['soil_ec'] if iot_telemetry else 1.8} mS/cm).\n- Maintain regular fertigation and inspection schedule."
 
     model_candidates = [
         "openai/gpt-oss-120b",
@@ -850,6 +977,8 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
         "llama3-8b-8192"
     ]
     
+    user_query = f"Vision Model Diagnosis: {diagnosis}{iot_text}"
+    
     for model_name in model_candidates:
         try:
             if HAS_GROQ_SDK:
@@ -858,10 +987,10 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
                     model=model_name,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Diagnosis: {diagnosis}"}
+                        {"role": "user", "content": user_query}
                     ],
                     temperature=0.2,
-                    max_tokens=300
+                    max_tokens=350
                 )
                 if chat_completion.choices and len(chat_completion.choices) > 0:
                     content = chat_completion.choices[0].message.content
@@ -877,10 +1006,10 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
                     "model": model_name,
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Diagnosis: {diagnosis}"}
+                        {"role": "user", "content": user_query}
                     ],
                     "temperature": 0.2,
-                    "max_tokens": 300
+                    "max_tokens": 350
                 }
                 
                 response = requests.post(url, json=payload, timeout=10)
@@ -895,6 +1024,7 @@ def run_intervention_recommendation(diagnosis, language_choice="🇲🇾 Bahasa 
             continue
             
     return "⚠️ Could not retrieve live intervention recommendation from Groq. Please check your API key and connection."
+
 
 
 # ---------------------------------------------------------------------
@@ -1106,12 +1236,22 @@ def generate_growth_scurve_data(crop_name, plot_id=None, cycle_start_str=None):
 st.sidebar.markdown("<h2 style='color:#1b4d3e; margin-top:0;'>🌱 FarmNeura</h2>", unsafe_allow_html=True)
 st.sidebar.caption("Farmer Interface v2")
 
-# Main Navigation Menu
+# Main Navigation Menu options
+nav_options = ["📋 Overview", "📷 Plot Monitoring", "⚙️ Registry & Management"]
+
+# Check for pending redirection before radio widget instantiation
+if "redirect_to_view" in st.session_state:
+    st.session_state["nav_menu"] = st.session_state.pop("redirect_to_view")
+
+if "nav_menu" not in st.session_state:
+    st.session_state["nav_menu"] = "📋 Overview"
+
 view_mode = st.sidebar.radio(
     "📁 Navigation Menu",
-    ["📋 Overview", "📷 Plot Monitoring", "⚙️ Registry & Management"],
-    index=0
+    nav_options,
+    key="nav_menu"
 )
+
 
 selected_farm_obj = None
 selected_plot_obj = None
@@ -1123,13 +1263,40 @@ if view_mode == "📷 Plot Monitoring":
     if not farms_list:
         st.sidebar.warning("No farms registered yet. Please go to Registry & Management to add a farm.")
     else:
-        selected_farm_obj = st.sidebar.selectbox("Select Farm location", options=farms_list, format_func=lambda x: x["name"])
+        farm_idx = 0
+        if "target_farm_id" in st.session_state:
+            for idx, f in enumerate(farms_list):
+                if f["id"] == st.session_state["target_farm_id"]:
+                    farm_idx = idx
+                    break
+                    
+        selected_farm_obj = st.sidebar.selectbox(
+            "Select Farm location",
+            options=farms_list,
+            format_func=lambda x: x["name"],
+            index=farm_idx,
+            key="sb_farm_select"
+        )
         
         plots_list = db_get_plots(selected_farm_obj["id"])
         if not plots_list:
             st.sidebar.warning("No plots registered for this farm. Please go to Registry & Management to add a plot.")
         else:
-            selected_plot_obj = st.sidebar.selectbox("Select Target Plot", options=plots_list, format_func=lambda x: x["plot_name"])
+            plot_idx = 0
+            if "target_plot_id" in st.session_state:
+                for idx, p in enumerate(plots_list):
+                    if p["id"] == st.session_state["target_plot_id"]:
+                        plot_idx = idx
+                        break
+                        
+            selected_plot_obj = st.sidebar.selectbox(
+                "Select Target Plot",
+                options=plots_list,
+                format_func=lambda x: x["plot_name"],
+                index=plot_idx,
+                key="sb_plot_select"
+            )
+
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤖 AI Configuration")
@@ -1183,98 +1350,180 @@ st.markdown(
 
 # Render View: OVERVIEW
 if view_mode == "📋 Overview":
-    st.markdown("### Active Plots Dashboard")
-    st.caption("Monitoring health status, crop cycle timelines, and plant count across your active plots.")
+    # 1. Greeting & Microclimate Header
+    current_hour = datetime.now().hour
+    if current_hour < 12:
+        greeting_text = "Good Morning, Farmer"
+    elif current_hour < 18:
+        greeting_text = "Good Afternoon, Farmer"
+    else:
+        greeting_text = "Good Evening, Farmer"
+        
+    st.markdown(
+        f"""
+        <div style="margin-bottom: 1.2rem;">
+            <h2 style="margin: 0; font-size: 1.8rem; font-weight: 700; color: #111111;">{greeting_text} 👋</h2>
+            <div style="font-size: 0.92rem; color: #555555; margin-top: 4px;">
+                Welcome to FarmNeura Precision Plot Monitoring
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
     
     plots_data = db_get_plots_with_plants()
     
     if not plots_data:
         st.info("⚠️ No plots registered yet. Go to **Registry & Management** to register your farms and plots.")
     else:
-        # Group plots by crop type
-        grouped_plots = {}
-        for p in plots_data:
-            p_name = p["plant_name"] if p["plant_name"] else "Unassigned (No Crop)"
-            if p_name not in grouped_plots:
-                grouped_plots[p_name] = []
-            grouped_plots[p_name].append(p)
+        total_plots = len(plots_data)
+        needs_attention = 0
+        needs_photo = 0
+        healthy_count = 0
+        
+        plot_status_list = []
+        today = datetime.now()
+        
+        for plot in plots_data:
+            latest_rec = db_get_latest_record(plot["id"])
+            p_crop = plot["plant_name"] if plot.get("plant_name") else "Crop Unassigned"
             
-        for plant_name, plots in grouped_plots.items():
-            st.markdown(f"#### 🌿 Crop: {plant_name}")
+            is_attention = False
+            is_overdue = False
+            days_overdue = 0
             
-            # Display plots in a 3-column layout
-            cols = st.columns(min(len(plots), 3))
-            
-            for index, plot in enumerate(plots):
-                col = cols[index % 3]
-                
-                latest_rec = db_get_latest_record(plot["id"])
-                
-                if latest_rec:
-                    d_text = latest_rec["diagnosis"].lower()
-                    if "stressed" in d_text or "diseased" in d_text or "chlorosis" in d_text:
-                        status_badge = "🔴 Diseased"
-                        card_bg = "#ffebee"
-                        border_color = "#ef5350"
-                    else:
-                        status_badge = "🟢 Healthy"
-                        card_bg = "#e8f5e9"
-                        border_color = "#66bb6a"
-                    last_time = latest_rec["time"]
-                    plant_count_display = f"{latest_rec['bil_pokok']} Plants"
+            if latest_rec:
+                d_text = latest_rec["diagnosis"].lower()
+                if any(w in d_text for w in ["stressed", "diseased", "chlorosis", "spot", "blight", "virus", "mold", "mildew"]):
+                    is_attention = True
+                    needs_attention += 1
                 else:
-                    status_badge = "⚪ Pending Inspection"
-                    card_bg = "#f5f5f5"
-                    border_color = "#bdbdbd"
-                    last_time = "N/A"
-                    plant_count_display = "No data"
-                
-                cycle_progress = 0
-                cycle_days_str = ""
+                    healthy_count += 1
+                    
                 try:
-                    start_date = datetime.strptime(plot["cycle_start"], "%Y-%m-%d")
-                    end_date = datetime.strptime(plot["cycle_end"], "%Y-%m-%d")
-                    total_days = (end_date - start_date).days
-                    
-                    today = datetime.now()
-                    elapsed_days = (today - start_date).days
-                    
-                    if elapsed_days < 0:
-                        cycle_progress = 0
-                    elif elapsed_days >= total_days:
-                        cycle_progress = 100
-                    else:
-                        cycle_progress = int((elapsed_days / total_days) * 100)
-                    
-                    cycle_days_str = f"Day {elapsed_days} of {total_days}"
+                    last_time = datetime.strptime(latest_rec["time"], "%Y-%m-%d %H:%M")
+                    days_diff = (today - last_time).days
+                    if days_diff >= 3:
+                        is_overdue = True
+                        days_overdue = days_diff
+                        needs_photo += 1
                 except Exception:
-                    cycle_progress = 0
-                    cycle_days_str = "Unknown timeline"
+                    pass
+            else:
+                is_overdue = True
+                needs_photo += 1
+                days_overdue = 0
                 
-                with col:
-                    card_html = (
-                        f'<div class="plot-card" style="background-color: {card_bg}; border: 2px solid {border_color};">'
-                        f'<h4>📍 {plot["plot_name"]}</h4>'
-                        f'<p class="farm-subtitle">🚜 {plot["farm_name"]}</p>'
-                        f'<hr style="margin: 8px 0; border: 0; border-top: 1px solid rgba(0,0,0,0.15);"/>'
-                        f'<p><strong>Status:</strong> <span>{status_badge}</span></p>'
-                        f'<p><strong>Last Count:</strong> <span>{plant_count_display}</span></p>'
-                        f'<p class="inspection-time"><strong>Last Inspection:</strong> <span>{last_time}</span></p>'
-                        f'<hr style="margin: 8px 0; border: 0; border-top: 1px solid rgba(0,0,0,0.15);"/>'
-                        f'<p class="progress-label">Cycle Progress ({cycle_days_str}):</p>'
-                        f'</div>'
-                    )
-                    st.markdown(card_html, unsafe_allow_html=True)
-                    
-                    st.progress(cycle_progress / 100.0)
-                    
-                    footer_html = f'<div style="font-size: 0.8rem; color: #666; margin-top: -8px; margin-bottom: 24px; text-align: center;">📐 Size: {plot["size_sq_ft"]:,} sq ft | 💰 Budget: MYR {plot["cost_records"]:,}</div>'
-                    st.markdown(footer_html, unsafe_allow_html=True)
+            plot_status_list.append({
+                "plot": plot,
+                "crop": p_crop,
+                "latest_rec": latest_rec,
+                "is_attention": is_attention,
+                "is_overdue": is_overdue,
+                "days_overdue": days_overdue
+            })
+            
+        overall_health_pct = int((healthy_count / total_plots) * 100) if total_plots > 0 else 100
+        
+        # 2. 2x2 Metric Cards Summary Grid (matching user reference design)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(
+                f"""
+                <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 1.1rem; margin-bottom: 0.8rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.82rem; font-weight: 600; color: #555555; margin-bottom: 6px;">Overall Crop Health:</div>
+                    <div style="font-size: 1.7rem; font-weight: 700; color: #2e7d32;">{overall_health_pct}% Good 🍃</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"""
+                <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 1.1rem; margin-bottom: 0.8rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.82rem; font-weight: 600; color: #555555; margin-bottom: 6px;">📷 Needs Photo Update:</div>
+                    <div style="font-size: 1.7rem; font-weight: 700; color: #111111;">{needs_photo} Plots</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col2:
+            st.markdown(
+                f"""
+                <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 1.1rem; margin-bottom: 0.8rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.82rem; font-weight: 600; color: #555555; margin-bottom: 6px;"><span style="background: #e65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">Needs Attention:</span></div>
+                    <div style="font-size: 1.7rem; font-weight: 700; color: #e65100;">{needs_attention} Plots</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"""
+                <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 1.1rem; margin-bottom: 0.8rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.82rem; font-weight: 600; color: #555555; margin-bottom: 6px;">Active Plots:</div>
+                    <div style="font-size: 1.7rem; font-weight: 700; color: #111111;">{total_plots}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+        st.markdown("### Today's Action List")
+        st.caption("Prioritized plot inspection tasks based on latest AI vision diagnosis.")
+        
+        # Sort plot status list: Needs attention first, then photo overdue, then optimal growth
+        plot_status_list.sort(key=lambda x: (not x["is_attention"], not x["is_overdue"]))
+        
+        for idx, item in enumerate(plot_status_list):
+            plot = item["plot"]
+            crop = item["crop"]
+            latest_rec = item["latest_rec"]
+            is_att = item["is_attention"]
+            is_over = item["is_overdue"]
+            days_over = item["days_overdue"]
+            
+            if is_att:
+                status_pill = f'<span style="background: #fff3e0; color: #e65100; border: 1px solid #ffe082; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">⚠️ Disease/Stress Detected - Action Needed</span>'
+                btn_label = "Take Action ➔"
+                btn_kind = "primary"
+            elif is_over:
+                over_text = f"Photo Overdue ({days_over} days)" if days_over > 0 else "Pending Initial Photo"
+                status_pill = f'<span style="background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">ℹ️ {over_text}</span>'
+                btn_label = "📷 Scan Now"
+                btn_kind = "primary"
+            else:
+                status_pill = f'<span style="background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 4px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">✅ Optimal Growth</span>'
+                btn_label = "Inspect ➔"
+                btn_kind = "secondary"
+
+            col_card_info, col_card_btn = st.columns([2.8, 1.2])
+            with col_card_info:
+                st.markdown(
+                    f"""
+                    <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                        <div style="font-weight: 700; font-size: 1.05rem; color: #111111; margin-bottom: 4px;">📍 {plot['plot_name']} - {crop} <span style="font-size: 0.8rem; color: #666; font-weight: 400;">({plot['farm_name']})</span></div>
+                        <div>{status_pill}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with col_card_btn:
+                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+                if st.button(btn_label, key=f"act_btn_{plot['id']}_{idx}", type=btn_kind, use_container_width=True):
+                    st.session_state["target_farm_id"] = plot["farm_id"]
+                    st.session_state["target_plot_id"] = plot["id"]
+                    st.session_state["redirect_to_view"] = "📷 Plot Monitoring"
+                    st.rerun()
+
+
+
+
 
 # Render View: REGISTRY & MANAGEMENT
 elif view_mode == "⚙️ Registry & Management":
     st.markdown("### Farm & Plot Registry")
-    st.caption("Register and manage your agrivoltaic farms, plot boundaries, and crop types.")
+    st.caption("Register and manage your farms, plot boundaries, and crop types.")
+
     
     sub_tab_farm, sub_tab_plot, sub_tab_plant = st.tabs(["🚜 Register Farm", "📐 Register Plot", "🌿 Register Crops"])
     
@@ -1369,7 +1618,8 @@ elif view_mode == "⚙️ Registry & Management":
                     cycle_end = st.date_input("Cycle End Date", value=datetime.now())
                     
                 p_cost = st.number_input("Est. Cycle Cost Budget (MYR)", min_value=0.0, step=50.0, value=0.0)
-                p_notes = st.text_area("Plot Notes (optional)", placeholder="Shading ratio, solar panel alignment, etc.")
+                p_notes = st.text_area("Plot Notes (optional)", placeholder="Soil type, irrigation row, microclimate notes, etc.")
+
                 
                 submitted = st.form_submit_button("Register Plot", type="primary")
                 if submitted:
@@ -1545,8 +1795,51 @@ elif view_mode == "⚙️ Registry & Management":
 
 # Render View: PLOT MONITORING (Module 4)
 elif view_mode == "📷 Plot Monitoring":
+    farms_list = db_get_farms()
+    if not farms_list:
+        st.info("⚠️ No farms registered yet. Go to **Registry & Management** to register your farms and plots.")
+    else:
+        # Determine initial farm index
+        farm_idx = 0
+        if "target_farm_id" in st.session_state:
+            for idx, f in enumerate(farms_list):
+                if f["id"] == st.session_state["target_farm_id"]:
+                    farm_idx = idx
+                    break
+                    
+        col_f, col_p = st.columns(2)
+        with col_f:
+            selected_farm_obj = st.selectbox(
+                "🚜 Target Farm Location",
+                options=farms_list,
+                format_func=lambda x: x["name"],
+                index=farm_idx,
+                key="main_farm_select"
+            )
+            
+        plots_list = db_get_plots(selected_farm_obj["id"])
+        if not plots_list:
+            st.warning(f"⚠️ No plots registered under '{selected_farm_obj['name']}'. Please go to Registry & Management to add a plot.")
+            selected_plot_obj = None
+        else:
+            plot_idx = 0
+            if "target_plot_id" in st.session_state:
+                for idx, p in enumerate(plots_list):
+                    if p["id"] == st.session_state["target_plot_id"]:
+                        plot_idx = idx
+                        break
+                        
+            with col_p:
+                selected_plot_obj = st.selectbox(
+                    "📍 Target Plot",
+                    options=plots_list,
+                    format_func=lambda x: x["plot_name"],
+                    index=plot_idx,
+                    key="main_plot_select"
+                )
+                
     if not selected_farm_obj or not selected_plot_obj:
-        st.info("⚠️ Please select a Farm and Plot in the sidebar, or go to the **Registry & Management** view to register them.")
+        st.info("⚠️ Please select a Farm and Plot above, or go to **Registry & Management** to register them.")
     else:
         tab_record, tab_monitor = st.tabs(["📷 Take / Upload Record", "📊 Plot History Log"])
         
@@ -1558,10 +1851,21 @@ elif view_mode == "📷 Plot Monitoring":
             # Display active crops in this plot
             crops_list = db_get_plants(selected_plot_obj["id"])
             if crops_list:
-                crops_str = ", ".join([c["name"] for c in crops_list])
-                st.markdown(f"🌾 **Active crops in this plot:** {crops_str}")
+                crop_names = [c["name"] for c in crops_list]
+                if len(crop_names) > 1:
+                    selected_target_crop = st.selectbox(
+                        "🌾 Specific Crop in this Photo (Multi-Crop / Intercropping Plot)",
+                        options=crop_names,
+                        help="Select which registered crop variety is featured in this photo so AI intervention is tailored to it."
+                    )
+                else:
+                    selected_target_crop = crop_names[0]
+                    st.markdown(f"🌾 **Active crop in this plot:** `{selected_target_crop}`")
             else:
+                selected_target_crop = "General Crop"
                 st.markdown("⚠️ *No crops registered for this plot yet. You can add them in the Crop Registry.*")
+
+
 
             camera_img = st.camera_input("📷 Use Mobile Camera")
             uploaded_img = st.file_uploader("📂 Or Upload Image file", type=["jpg", "jpeg", "png"])
@@ -1604,21 +1908,58 @@ elif view_mode == "📷 Plot Monitoring":
                 else:
                     st.image(image_file, caption="Selected Canopy Frame", use_container_width=True)
                 
-                # Primary Action Button
-                if st.button("Diagnose Crop Health", type="primary"):
-                    with st.spinner("Processing plant count & detecting abnormalities..."):
-                        bil_pokok, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file, model_preference=selected_vision_model)
-                        intervention = run_intervention_recommendation(diagnosis, language_choice=language_choice)
+                # Cloud IoT Telemetry Simulation Panel
+                with st.expander("🌐 Cloud IoT Telemetry Stream (Live Sensor Data ➔ LLM Fusion)", expanded=True):
+                    col_iot1, col_iot2 = st.columns([2.5, 1.5])
+                    with col_iot1:
+                        st.markdown("📡 **Connected IoT Cloud Broker**")
+                        st.caption(f"Real-time sensor telemetry for **{selected_plot_obj['plot_name']}** synced to LLM prompt.")
+                    with col_iot2:
+                        if st.button("🔄 Sync Cloud IoT Data", key="sync_iot_btn"):
+                            st.session_state["iot_telemetry"] = fetch_simulated_iot_telemetry(selected_plot_obj["id"])
+                            st.session_state["iot_plot_id"] = selected_plot_obj["id"]
+                            st.success("Synced latest IoT telemetry from Cloud Server!")
+                            
+                    if "iot_telemetry" not in st.session_state or st.session_state.get("iot_plot_id") != selected_plot_obj["id"]:
+                        st.session_state["iot_telemetry"] = fetch_simulated_iot_telemetry(selected_plot_obj["id"])
+                        st.session_state["iot_plot_id"] = selected_plot_obj["id"]
+                        
+                    iot = st.session_state["iot_telemetry"]
                     
-                    st.success("Diagnosis Complete!")
+                    m1, m2, m3, m4 = st.columns(4)
+                    with m1:
+                        m_delta = "🔴 DEFICIT" if iot['soil_moisture'] < 40 else ("🟢 OPTIMAL" if iot['soil_moisture'] <= 70 else "🔵 HIGH")
+                        st.metric("💧 Soil Moisture", f"{iot['soil_moisture']}%", delta=m_delta)
+                    with m2:
+                        st.metric("🌡️ Air Temp", f"{iot['air_temp']}°C")
+                    with m3:
+                        st.metric("🧪 Soil EC", f"{iot['soil_ec']} mS/cm")
+                    with m4:
+                        st.metric("🧪 Soil pH", f"{iot['soil_ph']}")
+                        
+                    st.caption(f"Status: `{iot['server_status']}` | Last Telemetry Sync: `{iot['timestamp']}`")
+                
+                # Primary Action Button
+                if st.button("Diagnose Crop Health & Run LLM Fusion", type="primary"):
+                    with st.spinner("Processing leaf count & fusing Cloud IoT sensor telemetry with LLM..."):
+                        bil_daun, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file, model_preference=selected_vision_model)
+                        current_iot = st.session_state.get("iot_telemetry")
+                        intervention = run_intervention_recommendation(
+                            diagnosis, 
+                            iot_telemetry=current_iot, 
+                            language_choice=language_choice
+                        )
+                    
+                    st.success("Multimodal Diagnosis & IoT Fusion Complete!")
                     
                     st.session_state.temp_diagnosis = {
-                        "bil_pokok": bil_pokok,
+                        "bil_daun": bil_daun,
                         "diagnosis": diagnosis,
                         "intervention": intervention,
                         "annotated_image": annotated_image
                     }
                     st.rerun()
+
 
                 # Check if we have results ready to display
                 if "temp_diagnosis" in st.session_state:
@@ -1628,30 +1969,32 @@ elif view_mode == "📷 Plot Monitoring":
                     st.markdown(
                         f"""
                         <div class="custom-metric">
-                            <div class="custom-metric-val">{res['bil_pokok']}</div>
-                            <div class="custom-metric-lbl">Total Plants Detected (Bil Pokok)</div>
+                            <div class="custom-metric-val">{res['bil_daun']}</div>
+                            <div class="custom-metric-lbl">🍃 Total Leaves Detected (Bil Daun)</div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                     
                     # 2. Custom Styled Diagnosis card
+                    diag_html = render_markdown_to_html(res['diagnosis'])
                     st.markdown(
                         f"""
                         <div class="result-card neutral">
                             <div class="card-title">🔍 Crop Condition Diagnosis</div>
-                            <div class="card-text">{res['diagnosis']}</div>
+                            <div class="card-text">{diag_html}</div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                     
                     # 3. Custom Styled Intervention card
+                    interv_html = render_markdown_to_html(res['intervention'])
                     st.markdown(
                         f"""
                         <div class="result-card alert">
                             <div class="card-title">💡 Recommended Intervention</div>
-                            <div class="card-text">{res['intervention']}</div>
+                            <div class="card-text">{interv_html}</div>
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -1670,7 +2013,7 @@ elif view_mode == "📷 Plot Monitoring":
                         success, msg = db_add_record(
                             selected_plot_obj["id"],
                             time_str,
-                            res["bil_pokok"],
+                            res["bil_daun"],
                             res["diagnosis"],
                             res["intervention"],
                             notes,
@@ -1718,7 +2061,8 @@ elif view_mode == "📷 Plot Monitoring":
             else:
                 # Display history
                 for r in plot_records:
-                    expander_label = f"📅 {r['time']}  |  🌱 Count: {r['bil_pokok']} Plants"
+                    leaf_val = r.get("bil_daun", r.get("bil_pokok", 0))
+                    expander_label = f"📅 {r['time']}  |  🍃 Leaf Count: {leaf_val} Leaves"
                     if r.get("canopy_cover_pct") is not None:
                         expander_label += f"  |  🌿 CC: {r['canopy_cover_pct']}%"
                     
