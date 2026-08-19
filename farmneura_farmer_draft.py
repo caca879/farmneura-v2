@@ -458,6 +458,8 @@ def save_uploaded_image(image_input, plot_id):
     """
     Saves image input to local uploads/ directory and returns relative file path.
     """
+    if image_input is None:
+        return None
     uploads_dir = "uploads"
     if not os.path.exists(uploads_dir):
         os.makedirs(uploads_dir)
@@ -471,10 +473,13 @@ def save_uploaded_image(image_input, plot_id):
         if isinstance(image_input, Image.Image):
             image_input.save(filepath)
         else:
-            pil_img = Image.open(image_input)
+            if hasattr(image_input, "seek"):
+                image_input.seek(0)
+            pil_img = Image.open(image_input).convert("RGB")
             pil_img.save(filepath)
         return filepath
-    except Exception:
+    except Exception as e:
+        print(f"Error saving image: {e}")
         return None
 
 def db_add_record(plot_id, time, bil_daun, diagnosis, intervention, notes, canopy_cover_pct=None, image_path=None):
@@ -615,6 +620,39 @@ def db_delete_record(record_id):
         return True, "Monitoring record deleted successfully."
     except Exception as e:
         return False, f"Error deleting record: {str(e)}"
+
+def db_update_record(record_id, new_time=None, new_notes=None, new_bil_daun=None):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(monitoring_records)")
+        cols = [c[1] for c in cursor.fetchall()]
+        
+        updates = []
+        params = []
+        if new_time is not None:
+            updates.append("time = ?")
+            params.append(new_time)
+        if new_notes is not None:
+            updates.append("notes = ?")
+            params.append(new_notes)
+        if new_bil_daun is not None:
+            if "bil_daun" in cols:
+                updates.append("bil_daun = ?")
+                params.append(new_bil_daun)
+            if "bil_pokok" in cols:
+                updates.append("bil_pokok = ?")
+                params.append(new_bil_daun)
+        
+        if updates:
+            params.append(record_id)
+            sql = f"UPDATE monitoring_records SET {', '.join(updates)} WHERE id = ?"
+            cursor.execute(sql, tuple(params))
+            conn.commit()
+        conn.close()
+        return True, "Monitoring record updated successfully."
+    except Exception as e:
+        return False, f"Error updating record: {str(e)}"
 
 # ---------------------------------------------------------------------
 # INTEGRATION FUNCTIONS
@@ -1877,18 +1915,18 @@ elif view_mode == "📷 Plot Monitoring":
 
 
 
-            camera_img = st.camera_input("📷 Use Mobile Camera")
-            uploaded_img = st.file_uploader("📂 Or Upload Image file", type=["jpg", "jpeg", "png"])
+            camera_img = st.camera_input("📷 Use Mobile Camera", key="plot_cam_input")
+            uploaded_img = st.file_uploader("📂 Or Upload Image file", type=["jpg", "jpeg", "png"], key="plot_file_input")
 
             image_file = camera_img or uploaded_img
 
-            # Reset temp diagnosis results if a new image is captured or uploaded
+            # Reset temp diagnosis results only if a new image file is selected
             if image_file is not None:
-                img_id = getattr(image_file, "name", "camera_snap") + "_" + str(image_file.size)
-                if "last_image_id" not in st.session_state or st.session_state.last_image_id != img_id:
-                    st.session_state.last_image_id = img_id
+                img_id = f"{getattr(image_file, 'name', 'camera')}_{getattr(image_file, 'size', 0)}"
+                if st.session_state.get("last_image_id") != img_id:
+                    st.session_state["last_image_id"] = img_id
                     if "temp_diagnosis" in st.session_state:
-                        del st.session_state.temp_diagnosis
+                        del st.session_state["temp_diagnosis"]
 
             if image_file is not None:
                 st.markdown("---")
@@ -1905,7 +1943,8 @@ elif view_mode == "📷 Plot Monitoring":
                 selected_vision_model = st.selectbox(
                     "🤖 Select AI Vision Model" if language_choice != "🇲🇾 Bahasa Melayu" else "🤖 Pilih Model Penglihatan AI",
                     available_models,
-                    index=0
+                    index=0,
+                    key="vision_model_selector"
                 )
                 
                 # Display annotated image if available, else show raw image
@@ -1950,8 +1989,13 @@ elif view_mode == "📷 Plot Monitoring":
                     st.caption(f"Status: `{iot['server_status']}` | Last Telemetry Sync: `{iot['timestamp']}`")
                 
                 # Primary Action Button
-                if st.button("Diagnose Crop Health & Run LLM Fusion", type="primary"):
+                if st.button("Diagnose Crop Health & Run LLM Fusion", type="primary", key="btn_run_diag_fusion"):
                     with st.spinner("Processing leaf count & fusing Cloud IoT sensor telemetry with LLM..."):
+                        if hasattr(image_file, "seek"):
+                            image_file.seek(0)
+                        pil_backup = Image.open(image_file).convert("RGB")
+                        if hasattr(image_file, "seek"):
+                            image_file.seek(0)
                         bil_daun, diagnosis, annotated_image = run_yolo_count_and_diagnosis(image_file, model_preference=selected_vision_model)
                         current_iot = st.session_state.get("iot_telemetry")
                         intervention = run_intervention_recommendation(
@@ -1966,7 +2010,8 @@ elif view_mode == "📷 Plot Monitoring":
                         "bil_daun": bil_daun,
                         "diagnosis": diagnosis,
                         "intervention": intervention,
-                        "annotated_image": annotated_image
+                        "annotated_image": annotated_image,
+                        "raw_image": pil_backup
                     }
                     st.rerun()
 
@@ -2011,19 +2056,27 @@ elif view_mode == "📷 Plot Monitoring":
                     )
                     
                     # Additional Notes field
-                    notes = st.text_area("📝 Field Notes / Observations (Optional)", placeholder="Add any details about soil dampness, weather, or manual inspection details.")
+                    notes = st.text_area("📝 Field Notes / Observations (Optional)", placeholder="Add any details about soil dampness, weather, or manual inspection details.", key="save_notes_area")
+                    
+                    # Date & Time picker for logging
+                    st.markdown("##### 📅 Log Date & Time")
+                    col_dt1, col_dt2 = st.columns(2)
+                    with col_dt1:
+                        pick_date = st.date_input("Inspection Date", value=get_now_myt().date(), key="save_date_picker")
+                    with col_dt2:
+                        pick_time = st.time_input("Inspection Time", value=get_now_myt().time(), key="save_time_picker")
+                    
+                    custom_timestamp_str = f"{pick_date.strftime('%Y-%m-%d')} {pick_time.strftime('%H:%M')}"
                     
                     # Save Action Button
-                    if st.button("💾 Save Record to Plot Log"):
-                        time_str = get_now_myt().strftime("%Y-%m-%d %H:%M")
-
-                        
-                        # Save uploaded image to disk
-                        saved_img_path = save_uploaded_image(image_file, selected_plot_obj["id"])
+                    if st.button("💾 Save Record to Plot Log", type="primary", key="btn_save_log_record", use_container_width=True):
+                        # Save uploaded image to disk safely
+                        img_to_save = res.get("raw_image") or image_file
+                        saved_img_path = save_uploaded_image(img_to_save, selected_plot_obj["id"])
                         
                         success, msg = db_add_record(
                             selected_plot_obj["id"],
-                            time_str,
+                            custom_timestamp_str,
                             res["bil_daun"],
                             res["diagnosis"],
                             res["intervention"],
@@ -2034,8 +2087,10 @@ elif view_mode == "📷 Plot Monitoring":
                             # Clean temporary workspace
                             if "temp_diagnosis" in st.session_state:
                                 del st.session_state.temp_diagnosis
+                            if "last_image_id" in st.session_state:
+                                del st.session_state.last_image_id
                             
-                            st.success("✅ Record successfully logged to history. View the log in the 'Plot History Log' tab.")
+                            st.success("✅ Record successfully logged to database! View the log in the 'Plot History Log' tab.")
                             st.balloons()
                             st.rerun()
                         else:
@@ -2142,8 +2197,35 @@ elif view_mode == "📷 Plot Monitoring":
                         if r.get("notes"):
                             st.markdown(f"📝 **Field Notes:** *\"{r['notes']}\"*")
                         
-                        # Delete Record action
+                        # Actions: Edit Date/Details & Delete Record
                         st.markdown("---")
+                        
+                        with st.expander(f"✏️ Edit Date & Log Details", expanded=False):
+                            try:
+                                curr_dt = datetime.strptime(r['time'], "%Y-%m-%d %H:%M")
+                                init_d = curr_dt.date()
+                                init_t = curr_dt.time()
+                            except Exception:
+                                init_d = get_now_myt().date()
+                                init_t = get_now_myt().time()
+                                
+                            col_e1, col_e2 = st.columns(2)
+                            with col_e1:
+                                edit_d = st.date_input("Inspection Date", value=init_d, key=f"edit_d_{r['id']}")
+                            with col_e2:
+                                edit_t = st.time_input("Inspection Time", value=init_t, key=f"edit_t_{r['id']}")
+                                
+                            edit_notes = st.text_area("Field Notes", value=r.get("notes", "") or "", key=f"edit_n_{r['id']}")
+                            edit_leaves = st.number_input("Leaves Count (Bil Daun)", min_value=0, max_value=5000, value=int(leaf_val), key=f"edit_lf_{r['id']}")
+                            
+                            if st.button("💾 Save Changes to Log", key=f"save_edit_btn_{r['id']}", type="primary"):
+                                updated_time_str = f"{edit_d.strftime('%Y-%m-%d')} {edit_t.strftime('%H:%M')}"
+                                ok, msg = db_update_record(r['id'], new_time=updated_time_str, new_notes=edit_notes, new_bil_daun=edit_leaves)
+                                if ok:
+                                    st.success("✅ Log updated successfully!")
+                                    st.rerun()
+                                else:
+                                    st.error(f"Error updating log: {msg}")
 
                         col_space, col_delete_btn = st.columns([5, 2])
                         with col_delete_btn:
