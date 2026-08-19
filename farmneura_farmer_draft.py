@@ -2070,16 +2070,72 @@ elif view_mode == "📷 Plot Monitoring":
                     unsafe_allow_html=True
                 )
             else:
-                # Display history
-                for r in plot_records:
+                # Parse cycle start date of the plot
+                cycle_start_dt = None
+                if selected_plot_obj.get("cycle_start"):
+                    try:
+                        cycle_start_dt = datetime.strptime(selected_plot_obj["cycle_start"], "%Y-%m-%d").date()
+                    except Exception:
+                        pass
+
+                # Display history with stage tracking and day intervals between photos
+                for i, r in enumerate(plot_records):
                     leaf_val = r.get("bil_daun", r.get("bil_pokok", 0))
-                    expander_label = f"📅 {r['time']}  |  🍃 Leaf Count: {leaf_val} Leaves"
+                    
+                    # 1. Calculate Crop Cycle Day and Stage Badge
+                    stage_title_str = ""
+                    cycle_day_tag = ""
+                    try:
+                        rec_dt = datetime.strptime(r["time"], "%Y-%m-%d %H:%M")
+                        if cycle_start_dt:
+                            elapsed_days = (rec_dt.date() - cycle_start_dt).days
+                            elapsed_days = max(0, elapsed_days)
+                            st_title, _, _, _ = get_crop_stage_badge(elapsed_days, 35, 45)
+                            st_short = st_title.split("/")[0].strip()
+                            cycle_day_tag = f"  |  {st_short} (Day {elapsed_days})"
+                            stage_title_str = f"🌿 **Crop Stage:** {st_title} (Day {elapsed_days} of plot cycle)"
+                    except Exception:
+                        rec_dt = None
+
+                    # 2. Calculate Day Interval & Leaf Delta from Previous Photo
+                    interval_html = ""
+                    if rec_dt and i < len(plot_records) - 1:
+                        try:
+                            prev_r = plot_records[i + 1] # chronologically previous upload
+                            prev_dt = datetime.strptime(prev_r["time"], "%Y-%m-%d %H:%M")
+                            day_diff = (rec_dt.date() - prev_dt.date()).days
+                            prev_leaf = prev_r.get("bil_daun", prev_r.get("bil_pokok", 0))
+                            leaf_diff = leaf_val - prev_leaf
+                            diff_sign = "+" if leaf_diff >= 0 else ""
+                            
+                            interval_html = (
+                                f"<div style='background-color: #f1f8e9; border-left: 4px solid #7cb342; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.88rem; color: #2e7d32;'>"
+                                f"⏱️ <strong>Interval Tracking:</strong> Uploaded <strong>+{day_diff} days</strong> after previous photo ({prev_r['time']})<br/>"
+                                f"📈 <strong>Foliage Expansion:</strong> {diff_sign}{leaf_diff} leaves count difference"
+                                f"</div>"
+                            )
+                        except Exception:
+                            interval_html = ""
+                    elif i == len(plot_records) - 1:
+                        interval_html = (
+                            f"<div style='background-color: #e3f2fd; border-left: 4px solid #42a5f5; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.88rem; color: #1565c0;'>"
+                            f"🌱 <strong>Baseline Photo:</strong> Initial crop inspection recorded for this plot."
+                            f"</div>"
+                        )
+
+                    expander_label = f"📅 {r['time']}{cycle_day_tag}  |  🍃 {leaf_val} Leaves"
                     if r.get("canopy_cover_pct") is not None:
                         expander_label += f"  |  🌿 CC: {r['canopy_cover_pct']}%"
                     
                     with st.expander(expander_label):
+                        if interval_html:
+                            st.markdown(interval_html, unsafe_allow_html=True)
+                        if stage_title_str:
+                            st.markdown(stage_title_str)
+                            
                         if r.get("image_path") and os.path.exists(r["image_path"]):
                             st.image(r["image_path"], caption="Logged Canopy Photo", use_container_width=True)
+                            
                         st.markdown(f"**🔍 Diagnosis:** {r['diagnosis']}")
                         st.markdown(f"**💡 Recommended Intervention:**\n{r['intervention']}")
                         
@@ -2088,6 +2144,7 @@ elif view_mode == "📷 Plot Monitoring":
                         
                         # Delete Record action
                         st.markdown("---")
+
                         col_space, col_delete_btn = st.columns([5, 2])
                         with col_delete_btn:
                             if st.button("🗑️ Delete Log", key=f"del_rec_{r['id']}", type="secondary", use_container_width=True):
