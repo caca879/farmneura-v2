@@ -1,10 +1,9 @@
-# Ignore local Streamlit secrets (protects your API keys!)
-.streamlit/secrets.toml
-
-# Ignore local SQLite database
-farmneura.db
-
-# Ignore python caches and local VS Code configurations
-__pycache__/
-.vscode/
+node_modules
+dist
+.env
+.env.local
 *.pyc
+__pycache__
+.DS_Store
+.streamlit/secrets.toml
+secrets.toml
