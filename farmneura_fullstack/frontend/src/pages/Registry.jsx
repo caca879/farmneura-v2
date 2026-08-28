@@ -3,7 +3,7 @@ import { fetchFarms, createFarm, deleteFarm, fetchPlots, createPlot, deletePlot,
 import { Trash2, MapPin, Building, Sprout } from 'lucide-react';
 import { translations } from '../utils/translations';
 
-export default function Registry({ lang }) {
+export default function Registry({ lang, user }) {
   const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
 
   const [activeTab, setActiveTab] = useState('farm'); // 'farm' | 'plot' | 'crop'
@@ -36,11 +36,11 @@ export default function Registry({ lang }) {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const loadData = async () => {
     try {
-      const farmData = await fetchFarms();
+      const farmData = await fetchFarms(user?.id);
       setFarms(farmData);
       if (farmData.length > 0) {
         setSelectedFarmId(farmData[0].id);
@@ -70,7 +70,8 @@ export default function Registry({ lang }) {
       await createFarm({
         name: farmName,
         location: farmLoc,
-        size_sq_ft: parseFloat(farmSize)
+        size_sq_ft: parseFloat(farmSize),
+        user_id: user?.id
       });
       setFarmName('');
       setFarmLoc('');
@@ -79,6 +80,7 @@ export default function Registry({ lang }) {
       alert("Error creating farm: " + (err.response?.data?.detail || err.message));
     }
   };
+
 
   const handleDeleteFarm = async (id) => {
     if (confirm("Deleting this farm will remove all associated plots. Continue?")) {

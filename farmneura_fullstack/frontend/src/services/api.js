@@ -19,10 +19,12 @@ export const loginUser = async (credentials) => {
 };
 
 
-export const fetchFarms = async () => {
-  const res = await axios.get(`${API_BASE}/farms`);
+export const fetchFarms = async (userId = null) => {
+  const url = userId ? `${API_BASE}/farms?user_id=${userId}` : `${API_BASE}/farms`;
+  const res = await axios.get(url);
   return res.data;
 };
+
 
 export const createFarm = async (farmData) => {
   const res = await axios.post(`${API_BASE}/farms`, farmData);

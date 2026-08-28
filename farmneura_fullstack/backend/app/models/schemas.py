@@ -33,16 +33,19 @@ class FarmBase(BaseModel):
     name: str
     location: Optional[str] = None
     size_sq_ft: Optional[float] = 1000.0
+    user_id: Optional[str] = None
 
 class FarmCreate(FarmBase):
     pass
 
 class FarmResponse(FarmBase):
     id: str
+    user_id: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
 
 # --- Plot Schemas ---
 class PlotBase(BaseModel):

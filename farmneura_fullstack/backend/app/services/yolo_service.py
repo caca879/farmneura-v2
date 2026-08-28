@@ -73,12 +73,15 @@ def run_yolo_inference(image_file, model_preference="Auto-Detect"):
 
     orig_w, orig_h = image.size
 
-    # Search candidate model paths
+    this_dir = os.path.dirname(os.path.abspath(__file__))
     search_dirs = [
         settings.MODELS_DIR,
-        os.path.join(settings.BASE_DIR, "..", "models"),
+        os.path.join(settings.BASE_DIR, "models_onnx"),
         os.path.join(settings.BASE_DIR, "models"),
-        "c:/Users/User/Documents/farmneura2_antigravity/models"
+        os.path.abspath(os.path.join(this_dir, "..", "..", "models_onnx")),
+        os.path.abspath(os.path.join(this_dir, "..", "..", "models")),
+        os.path.abspath(os.path.join(this_dir, "..", "..", "..", "models")),
+        os.path.abspath(os.path.join(this_dir, "..", "..", "..", "..", "models"))
     ]
     
     model_path = None
@@ -94,8 +97,9 @@ def run_yolo_inference(image_file, model_preference="Auto-Detect"):
     else:
         candidate_names = ["best(okra_detection).onnx", "best_(okra_leaf_model).onnx", "best_(tomato_leaf_model).onnx", "yolov8_plant_detector.onnx", "best.onnx"]
 
-
     for d in search_dirs:
+        if not os.path.exists(d):
+            continue
         for m_name in candidate_names:
             p = os.path.abspath(os.path.join(d, m_name))
             if os.path.exists(p):
@@ -103,6 +107,7 @@ def run_yolo_inference(image_file, model_preference="Auto-Detect"):
                 break
         if model_path:
             break
+
 
     if not HAS_ONNX or not model_path:
         # Fallback simulation mode with drawn bounding boxes

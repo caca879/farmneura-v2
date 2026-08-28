@@ -22,16 +22,18 @@ class User(Base):
 
 
 class Farm(Base):
-
     __tablename__ = "farms"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(100), nullable=False, unique=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String(100), nullable=False)
     location = Column(String(255), nullable=True)
     size_sq_ft = Column(Float, default=1000.0)
     created_at = Column(DateTime, default=get_myt_now)
 
+    user = relationship("User", backref="farms")
     plots = relationship("Plot", back_populates="farm", cascade="all, delete-orphan")
+
 
 
 class Plot(Base):

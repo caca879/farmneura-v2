@@ -109,12 +109,14 @@ export default function App() {
             }}
             lang={lang}
             setLang={setLang}
+            user={user}
           />
         )}
 
         {(user && activeTab === '⚙️ Registry & Management') && (
-          <Registry lang={lang} />
+          <Registry lang={lang} user={user} />
         )}
+
       </main>
 
       <footer className="bg-white border-t border-gray-200 py-4 text-center text-xs text-gray-500">

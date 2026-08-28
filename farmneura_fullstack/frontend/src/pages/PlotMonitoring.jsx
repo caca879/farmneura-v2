@@ -14,50 +14,46 @@ const renderFormattedText = (text) => {
   });
 };
 
-export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelectFarmPlot, lang, setLang }) {
+export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelectFarmPlot, lang, setLang, user }) {
   const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
 
   const [farms, setFarms] = useState([]);
-  const [plots, setPlots] = useState([]);
-  const [crops, setCrops] = useState([]);
-
-  
   const [activeFarmId, setActiveFarmId] = useState(selectedFarmId || '');
+  const [plots, setPlots] = useState([]);
   const [activePlotId, setActivePlotId] = useState(selectedPlotId || '');
+  const [crops, setCrops] = useState([]);
   const [activeCropId, setActiveCropId] = useState('');
 
-  const [telemetry, setTelemetry] = useState(null);
-  const [syncingTelemetry, setSyncingTelemetry] = useState(false);
-
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  // Diagnostic & Model Options
   const [modelPref, setModelPref] = useState('Auto-Detect');
-  const [langChoice, setLangChoice] = useState(lang || '🇲🇾 Bahasa Melayu');
+  const [langChoice, setLangChoice] = useState('🇲🇾 Bahasa Melayu');
   const [fieldNotes, setFieldNotes] = useState('');
 
+  // Sub Tab: 'record' vs 'quick_scan' vs 'history'
+  const [activeTab, setActiveTab] = useState('record');
+
+  // Image Upload & Inspection State
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [diagnosing, setDiagnosing] = useState(false);
   const [currentResult, setCurrentResult] = useState(null);
-  const [modalImage, setModalImage] = useState(null);
 
-  // Quick Scan Post-Diagnosis Save State
+  // Quick Scan Post-Diagnosis Save Form
   const [saveFarmId, setSaveFarmId] = useState('');
-  const [savePlotId, setSavePlotId] = useState('');
-  const [saveCropId, setSaveCropId] = useState('');
   const [savePlots, setSavePlots] = useState([]);
+  const [savePlotId, setSavePlotId] = useState('');
   const [saveCrops, setSaveCrops] = useState([]);
+  const [saveCropId, setSaveCropId] = useState('');
   const [savingQuickScan, setSavingQuickScan] = useState(false);
 
+  // Live Telemetry & History
+  const [telemetry, setTelemetry] = useState(null);
+  const [syncingTelemetry, setSyncingTelemetry] = useState(false);
   const [history, setHistory] = useState([]);
-
-  const [activeTab, setActiveTab] = useState('record'); // 'record' | 'quick_scan' | 'history'
-
-
-  useEffect(() => {
-    setLangChoice(lang);
-  }, [lang]);
+  const [modalImage, setModalImage] = useState(null);
 
   useEffect(() => {
     loadFarms();
