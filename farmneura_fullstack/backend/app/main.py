@@ -2,12 +2,21 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.api_router import api_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Auto-migrate missing columns for existing tables (PostgreSQL & SQLite)
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE farms ADD COLUMN user_id VARCHAR(36);"))
+        conn.commit()
+except Exception:
+    pass
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
