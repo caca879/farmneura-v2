@@ -86,52 +86,22 @@ async def create_inspection(
             stage_name = get_crop_stage_badge(cycle_day)
         except Exception:
             pass
-        
-        # Save Record to Database if plot provided
-        record = InspectionRecord(
-            plot_id=plot.id,
-            crop_id=crop_id,
-            image_url=f"/uploads/{image_filename}",
-            leaf_count=leaf_count,
-            diagnosis=diagnosis,
-            intervention=intervention,
-            field_notes=field_notes,
-            cycle_day=cycle_day,
-            stage_name=stage_name,
-            created_at=now_dt
-        )
-        db.add(record)
-        db.commit()
-        db.refresh(record)
-        
-        return InspectionResponse(
-            id=record.id,
-            plot_id=record.plot_id,
-            crop_id=record.crop_id,
-            image_url=record.image_url,
-            leaf_count=record.leaf_count,
-            diagnosis=record.diagnosis,
-            intervention=record.intervention,
-            field_notes=record.field_notes,
-            cycle_day=record.cycle_day,
-            stage_name=record.stage_name,
-            created_at=record.created_at.strftime("%Y-%m-%d %H:%M")
-        )
 
-    # Return Quick Scan result (not saved to database yet)
+    # Return Diagnostic result (NOT saved to database until user explicitly clicks Save Record)
     return InspectionResponse(
-        id=f"quick_scan_{uuid.uuid4()}",
-        plot_id=None,
-        crop_id=None,
+        id=f"preview_{uuid.uuid4()}",
+        plot_id=plot_id if (plot_id and plot_id != "quick_scan") else None,
+        crop_id=crop_id,
         image_url=f"/uploads/{image_filename}",
         leaf_count=leaf_count,
         diagnosis=diagnosis,
         intervention=intervention,
         field_notes=field_notes,
-        cycle_day=0,
+        cycle_day=cycle_day,
         stage_name=stage_name,
         created_at=now_dt.strftime("%Y-%m-%d %H:%M")
     )
+
 
 @router.post("/save-quick-scan", response_model=InspectionResponse, status_code=status.HTTP_201_CREATED)
 def save_quick_scan_record(req: QuickScanSaveRequest, db: Session = Depends(get_db)):

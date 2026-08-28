@@ -263,6 +263,32 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
     }
   };
 
+  const handleSavePlotRecord = async () => {
+    if (!activePlotId || !currentResult) return;
+    try {
+      setSavingQuickScan(true);
+      await saveQuickScan({
+        plot_id: activePlotId,
+        crop_id: activeCropId || null,
+        image_url: currentResult.image_url,
+        leaf_count: currentResult.leaf_count,
+        diagnosis: currentResult.diagnosis,
+        intervention: currentResult.intervention,
+        field_notes: fieldNotes || null,
+      });
+
+      alert("✅ Record successfully saved to Plot History Log!");
+      loadHistoryData(activePlotId);
+      setActiveTab('history');
+    } catch (err) {
+      console.error(err);
+      alert("Error saving record to Plot History Log. Please try again.");
+    } finally {
+      setSavingQuickScan(false);
+    }
+  };
+
+
 
   const handleDeleteHistory = async (id) => {
     if (confirm("Are you sure you want to delete this log?")) {
@@ -328,9 +354,10 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               <option value="">{t.allCropsGeneral}</option>
             ) : (
               crops.map(c => (
-                <option key={c.id} value={c.id}>🌿 {c.name} {c.variety ? `(${c.variety})` : ''}</option>
+                <option key={c.id} value={c.id}>{c.name} {c.variety ? `(${c.variety})` : ''}</option>
               ))
             )}
+
           </select>
         </div>
       </div>
@@ -551,11 +578,13 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                 <div className="bg-black/5 rounded-xl p-2 border border-gray-200">
 
                   <img 
-                    src={currentResult.image_url} 
+                    key={currentResult.id || currentResult.image_url}
+                    src={`${currentResult.image_url}?t=${Date.now()}`} 
                     alt="Annotated Detections" 
-                    onClick={() => setModalImage(currentResult.image_url)}
+                    onClick={() => setModalImage(`${currentResult.image_url}?t=${Date.now()}`)}
                     className="w-full h-auto max-h-[600px] object-contain rounded-lg cursor-pointer hover:opacity-95 transition"
                   />
+
                 </div>
               </div>
 
@@ -597,15 +626,15 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                   />
 
                   <button
-                    onClick={() => {
-                      alert("✅ Record successfully saved to Plot History Log!");
-                      loadHistoryData(activePlotId);
-                      setActiveTab('history');
-                    }}
-                    className="w-full bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold py-3 rounded-xl shadow transition text-sm flex items-center justify-center space-x-2"
+                    onClick={handleSavePlotRecord}
+                    disabled={savingQuickScan}
+                    className={`w-full font-bold py-3 rounded-xl shadow transition text-sm flex items-center justify-center space-x-2 ${
+                      savingQuickScan ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-farmGreen-500 hover:bg-farmGreen-700 text-white'
+                    }`}
                   >
-                    <span>{t.btnSaveRecord}</span>
+                    <span>{savingQuickScan ? (langChoice?.includes('Melayu') ? 'Menyimpan...' : 'Saving...') : t.btnSaveRecord}</span>
                   </button>
+
                 </div>
               ) : (
                 /* Quick Scan Post-Diagnosis Save Card */
@@ -653,9 +682,10 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                           <option value="">{t.allCropsGeneral}</option>
                         ) : (
                           saveCrops.map(c => (
-                            <option key={c.id} value={c.id}>🌿 {c.name} {c.variety ? `(${c.variety})` : ''}</option>
+                            <option key={c.id} value={c.id}>{c.name} {c.variety ? `(${c.variety})` : ''}</option>
                           ))
                         )}
+
                       </select>
                     </div>
                   </div>

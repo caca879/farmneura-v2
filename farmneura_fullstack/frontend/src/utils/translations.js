@@ -74,7 +74,8 @@ export const translations = {
     // Monitoring Page
     targetFarmLabel: "🚜 LOKASI LADANG SASARAN",
     targetPlotLabel: "📍 PLOT SASARAN",
-    targetCropLabel: "🌿 TANAMAN SASARAN",
+    targetCropLabel: "TANAMAN SASARAN",
+
     allCropsGeneral: "Semua Tanaman / Am Plot",
 
     tabTakeRecord: "📷 Pemantauan Plot",
@@ -227,7 +228,8 @@ export const translations = {
     // Monitoring Page
     targetFarmLabel: "🚜 TARGET FARM LOCATION",
     targetPlotLabel: "📍 TARGET PLOT",
-    targetCropLabel: "🌿 TARGET CROP",
+    targetCropLabel: "TARGET CROP",
+
     allCropsGeneral: "All Crops / General Plot",
 
     tabTakeRecord: "📷 Plot Monitoring",
