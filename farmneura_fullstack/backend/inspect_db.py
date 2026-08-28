@@ -4,11 +4,29 @@ import os
 # Ensure backend path is importable
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.core.database import SessionLocal
-from app.models.db_models import User, Farm, Plot, Crop, InspectionRecord, IoTTelemetryLog
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.models.db_models import User, Farm, Plot, Crop, InspectionRecord
 
 def print_db_summary():
-    db = SessionLocal()
+    # Check if a custom database URL was passed as CLI argument or env var
+    db_url = os.getenv("DATABASE_URL")
+    if len(sys.argv) > 1 and sys.argv[1].startswith(("sqlite", "postgres")):
+        db_url = sys.argv[1]
+
+    if not db_url:
+        from app.core.config import settings
+        db_url = settings.DATABASE_URL
+
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+    print(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
+
+    engine = create_engine(db_url, connect_args={"check_same_thread": False} if db_url.startswith("sqlite") else {})
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
     try:
         print("=========================================================================")
         print("                 FARMNEURA V2 HUMAN-READABLE DATABASE                    ")
@@ -28,7 +46,14 @@ def print_db_summary():
         if not farms:
             print("   (No farms registered yet)")
         for f in farms:
-            print(f"\n   -> FARM: {f.name} (Location: {f.location})")
+            user_name = "Unknown"
+            if f.user_id:
+                u = db.query(User).filter(User.id == f.user_id).first()
+                if u: user_name = u.full_name
+            else:
+                user_name = "Shared/Default"
+
+            print(f"\n   -> FARM: {f.name} (Owner: {user_name} | Location: {f.location})")
             farm_plots = db.query(Plot).filter(Plot.farm_id == f.id).all()
             if not farm_plots:
                 print("      +-- (No plots inside this farm)")
