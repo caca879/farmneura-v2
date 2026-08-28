@@ -1,0 +1,7 @@
+@tailwindcss base;
+@tailwindcss components;
+@tailwindcss utilities;
+
+body {
+  font-family: 'Outfit', sans-serif;
+}
