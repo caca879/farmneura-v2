@@ -3,10 +3,12 @@ import axios from 'axios';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 
-export const fetchOverviewSummary = async () => {
-  const res = await axios.get(`${API_BASE}/overview/summary`);
+export const fetchOverviewSummary = async (userId = null) => {
+  const url = userId ? `${API_BASE}/overview/summary?user_id=${userId}` : `${API_BASE}/overview/summary`;
+  const res = await axios.get(url);
   return res.data;
 };
+
 
 export const signupUser = async (userData) => {
   const res = await axios.post(`${API_BASE}/auth/signup`, userData);

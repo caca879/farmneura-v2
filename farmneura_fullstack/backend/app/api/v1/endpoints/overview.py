@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 from app.core.database import get_db
 from app.models.db_models import Plot, InspectionRecord, Farm
@@ -10,8 +10,14 @@ router = APIRouter(prefix="/overview", tags=["Overview"])
 MYT = timezone(timedelta(hours=8))
 
 @router.get("/summary", response_model=Dict[str, Any])
-def get_overview_summary(db: Session = Depends(get_db)):
-    plots = db.query(Plot).all()
+def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    if user_id:
+        user_farms = db.query(Farm).filter((Farm.user_id == user_id) | (Farm.user_id == None)).all()
+        farm_ids = [f.id for f in user_farms]
+        plots = db.query(Plot).filter(Plot.farm_id.in_(farm_ids)).all() if farm_ids else []
+    else:
+        plots = db.query(Plot).all()
+
     total_plots = len(plots)
     
     healthy_count = 0
