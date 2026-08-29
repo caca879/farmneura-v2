@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 from app.core.database import get_db
-from app.models.db_models import Plot, InspectionRecord, Farm
+from app.models.db_models import User, Plot, InspectionRecord, Farm, Crop
 
 router = APIRouter(prefix="/overview", tags=["Overview"])
 
@@ -78,4 +78,40 @@ def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Dep
         "needs_photo_plots": needs_photo,
         "active_plots": total_plots,
         "today_action_list": action_list
+    }
+
+@router.get("/db-summary", response_model=Dict[str, Any])
+def get_live_db_summary(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    farms = db.query(Farm).all()
+    plots = db.query(Plot).all()
+    crops = db.query(Crop).all()
+    inspections = db.query(InspectionRecord).all()
+
+    return {
+        "total_users": len(users),
+        "total_farms": len(farms),
+        "total_plots": len(plots),
+        "total_crops": len(crops),
+        "total_saved_inspections": len(inspections),
+        "registered_users": [
+            {"id": u.id, "full_name": u.full_name, "email": u.email, "role": u.role, "created_at": str(u.created_at)}
+            for u in users
+        ],
+        "registered_farms": [
+            {"id": f.id, "name": f.name, "user_id": f.user_id, "location": f.location, "size_sq_ft": f.size_sq_ft}
+            for f in farms
+        ],
+        "registered_plots": [
+            {"id": p.id, "name": p.name, "farm_id": p.farm_id, "cycle": f"{p.cycle_start_date} to {p.cycle_end_date}"}
+            for p in plots
+        ],
+        "registered_crops": [
+            {"id": c.id, "name": c.name, "variety": c.variety, "plot_id": c.plot_id}
+            for c in crops
+        ],
+        "saved_inspections": [
+            {"id": i.id, "plot_id": i.plot_id, "leaf_count": i.leaf_count, "diagnosis": i.diagnosis, "created_at": str(i.created_at)}
+            for i in inspections
+        ]
     }
