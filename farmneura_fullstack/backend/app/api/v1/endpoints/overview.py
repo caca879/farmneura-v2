@@ -103,36 +103,41 @@ def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Dep
 
 @router.get("/db-summary", response_model=Dict[str, Any])
 def get_live_db_summary(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    farms = db.query(Farm).all()
-    plots = db.query(Plot).all()
-    crops = db.query(Crop).all()
-    inspections = db.query(InspectionRecord).all()
+    try:
+        users = db.query(User).all()
+        farms = db.query(Farm).all()
+        plots = db.query(Plot).all()
+        crops = db.query(Crop).all()
+        inspections = db.query(InspectionRecord).all()
 
-    return {
-        "total_users": len(users),
-        "total_farms": len(farms),
-        "total_plots": len(plots),
-        "total_crops": len(crops),
-        "total_saved_inspections": len(inspections),
-        "registered_users": [
-            {"id": u.id, "full_name": u.full_name, "email": u.email, "role": u.role, "created_at": str(u.created_at)}
-            for u in users
-        ],
-        "registered_farms": [
-            {"id": f.id, "name": f.name, "user_id": f.user_id, "location": f.location, "size_sq_ft": f.size_sq_ft}
-            for f in farms
-        ],
-        "registered_plots": [
-            {"id": p.id, "name": p.name, "farm_id": p.farm_id, "cycle": f"{p.cycle_start_date} to {p.cycle_end_date}"}
-            for p in plots
-        ],
-        "registered_crops": [
-            {"id": c.id, "name": c.name, "variety": c.variety, "plot_id": c.plot_id}
-            for c in crops
-        ],
-        "saved_inspections": [
-            {"id": i.id, "plot_id": i.plot_id, "leaf_count": i.leaf_count, "diagnosis": i.diagnosis, "created_at": str(i.created_at)}
-            for i in inspections
-        ]
-    }
+        return {
+            "total_users": len(users),
+            "total_farms": len(farms),
+            "total_plots": len(plots),
+            "total_crops": len(crops),
+            "total_saved_inspections": len(inspections),
+            "registered_users": [
+                {"id": getattr(u, 'id', ''), "full_name": getattr(u, 'full_name', ''), "email": getattr(u, 'email', ''), "role": getattr(u, 'role', ''), "created_at": str(getattr(u, 'created_at', ''))}
+                for u in users
+            ],
+            "registered_farms": [
+                {"id": getattr(f, 'id', ''), "name": getattr(f, 'name', ''), "user_id": getattr(f, 'user_id', ''), "location": getattr(f, 'location', ''), "size_sq_ft": getattr(f, 'size_sq_ft', 0)}
+                for f in farms
+            ],
+            "registered_plots": [
+                {"id": getattr(p, 'id', ''), "name": getattr(p, 'name', ''), "farm_id": getattr(p, 'farm_id', ''), "cycle": f"{getattr(p, 'cycle_start_date', '')} to {getattr(p, 'cycle_end_date', '')}"}
+                for p in plots
+            ],
+            "registered_crops": [
+                {"id": getattr(c, 'id', ''), "name": getattr(c, 'name', ''), "variety": getattr(c, 'variety', ''), "plot_id": getattr(c, 'plot_id', '')}
+                for c in crops
+            ],
+            "saved_inspections": [
+                {"id": getattr(i, 'id', ''), "plot_id": getattr(i, 'plot_id', ''), "leaf_count": getattr(i, 'leaf_count', 0), "diagnosis": getattr(i, 'diagnosis', ''), "created_at": str(getattr(i, 'created_at', ''))}
+                for i in inspections
+            ]
+        }
+    except Exception as err:
+        db.rollback()
+        return {"error": str(err), "status": "failed_db_query"}
+
