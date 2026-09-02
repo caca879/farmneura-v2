@@ -71,14 +71,21 @@ def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Dep
     overall_health_pct = int((healthy_count / total_plots) * 100) if total_plots > 0 else 100
     
     # Calculate Total Harvest Yield (KG) & Total Revenue (RM)
-    from app.models.db_models import HarvestRecord
-    if user_id:
-        harvest_records = db.query(HarvestRecord).filter(HarvestRecord.user_id == user_id).all()
-    else:
-        harvest_records = db.query(HarvestRecord).all()
+    total_harvest_kg = 0.0
+    total_harvest_revenue_myr = 0.0
+    try:
+        from app.models.db_models import HarvestRecord
+        if user_id:
+            harvest_records = db.query(HarvestRecord).filter(HarvestRecord.user_id == user_id).all()
+        else:
+            harvest_records = db.query(HarvestRecord).all()
 
-    total_harvest_kg = round(sum(h.yield_weight_kg for h in harvest_records), 2)
-    total_harvest_revenue_myr = round(sum(h.total_revenue_myr for h in harvest_records), 2)
+        total_harvest_kg = round(sum(h.yield_weight_kg for h in harvest_records), 2)
+        total_harvest_revenue_myr = round(sum(h.total_revenue_myr for h in harvest_records), 2)
+    except Exception as err:
+        db.rollback()
+        print("Harvest calculation warning:", err)
+
 
     # Sort action list: Needs attention first, then overdue photo
     action_list.sort(key=lambda x: (not x["is_attention"], not x["is_overdue"]))
