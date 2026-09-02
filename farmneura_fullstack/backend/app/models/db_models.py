@@ -102,6 +102,7 @@ class InspectionRecord(Base):
     created_at = Column(DateTime, default=get_myt_now)
 
     plot = relationship("Plot", back_populates="inspection_records")
+    crop = relationship("Crop", back_populates="inspection_records")
 
 
 class HarvestRecord(Base):
@@ -119,4 +120,3 @@ class HarvestRecord(Base):
 
     plot = relationship("Plot", backref="harvests")
 
-    crop = relationship("Crop", back_populates="inspection_records")
