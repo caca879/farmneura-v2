@@ -107,3 +107,23 @@ export const deleteInspection = async (inspectionId) => {
   const res = await axios.delete(`${API_BASE}/inspections/${inspectionId}`);
   return res.data;
 };
+
+export const fetchHarvests = async (plotId = null, userId = null) => {
+  const params = [];
+  if (plotId) params.push(`plot_id=${plotId}`);
+  if (userId) params.push(`user_id=${userId}`);
+  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+  const res = await axios.get(`${API_BASE}/harvests${queryStr}`);
+  return res.data;
+};
+
+export const createHarvest = async (harvestData) => {
+  const res = await axios.post(`${API_BASE}/harvests`, harvestData);
+  return res.data;
+};
+
+export const deleteHarvest = async (harvestId) => {
+  const res = await axios.delete(`${API_BASE}/harvests/${harvestId}`);
+  return res.data;
+};
+

@@ -70,6 +70,16 @@ def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Dep
         
     overall_health_pct = int((healthy_count / total_plots) * 100) if total_plots > 0 else 100
     
+    # Calculate Total Harvest Yield (KG) & Total Revenue (RM)
+    from app.models.db_models import HarvestRecord
+    if user_id:
+        harvest_records = db.query(HarvestRecord).filter(HarvestRecord.user_id == user_id).all()
+    else:
+        harvest_records = db.query(HarvestRecord).all()
+
+    total_harvest_kg = round(sum(h.yield_weight_kg for h in harvest_records), 2)
+    total_harvest_revenue_myr = round(sum(h.total_revenue_myr for h in harvest_records), 2)
+
     # Sort action list: Needs attention first, then overdue photo
     action_list.sort(key=lambda x: (not x["is_attention"], not x["is_overdue"]))
     
@@ -78,8 +88,11 @@ def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Dep
         "needs_attention_plots": needs_attention,
         "needs_photo_plots": needs_photo,
         "active_plots": total_plots,
+        "total_harvest_kg": total_harvest_kg,
+        "total_harvest_revenue_myr": total_harvest_revenue_myr,
         "today_action_list": action_list
     }
+
 
 @router.get("/db-summary", response_model=Dict[str, Any])
 def get_live_db_summary(db: Session = Depends(get_db)):

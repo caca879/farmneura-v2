@@ -102,4 +102,21 @@ class InspectionRecord(Base):
     created_at = Column(DateTime, default=get_myt_now)
 
     plot = relationship("Plot", back_populates="inspection_records")
+
+
+class HarvestRecord(Base):
+    __tablename__ = "harvest_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plot_id = Column(String(36), ForeignKey("plots.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    yield_weight_kg = Column(Float, nullable=False, default=0.0)
+    price_per_kg_myr = Column(Float, nullable=False, default=0.0)
+    total_revenue_myr = Column(Float, nullable=False, default=0.0)
+    harvest_date = Column(String(20), nullable=False)
+    notes = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=get_myt_now)
+
+    plot = relationship("Plot", backref="harvests")
+
     crop = relationship("Crop", back_populates="inspection_records")

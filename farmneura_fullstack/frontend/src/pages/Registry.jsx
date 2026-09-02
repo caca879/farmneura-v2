@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { fetchFarms, createFarm, deleteFarm, fetchPlots, createPlot, deletePlot, fetchCrops, createCrop, deleteCrop } from '../services/api';
-import { Trash2, MapPin, Building, Sprout } from 'lucide-react';
+import { 
+  fetchFarms, createFarm, deleteFarm, 
+  fetchPlots, createPlot, deletePlot, 
+  fetchCrops, createCrop, deleteCrop,
+  fetchHarvests, createHarvest, deleteHarvest 
+} from '../services/api';
+import { Trash2, MapPin, Building, Sprout, DollarSign } from 'lucide-react';
 import { translations } from '../utils/translations';
 
 export default function Registry({ lang, user }) {
   const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
 
-  const [activeTab, setActiveTab] = useState('farm'); // 'farm' | 'plot' | 'crop'
+  const [activeTab, setActiveTab] = useState('farm'); // 'farm' | 'plot' | 'crop' | 'harvest'
 
   const [farms, setFarms] = useState([]);
   const [plots, setPlots] = useState([]);
   const [crops, setCrops] = useState([]);
+  const [harvests, setHarvests] = useState([]);
 
   // Farm Form
   const [farmName, setFarmName] = useState('');
@@ -34,6 +40,13 @@ export default function Registry({ lang, user }) {
   const [cropPlantingDate, setCropPlantingDate] = useState(new Date().toISOString().split('T')[0]);
   const [harvestDays, setHarvestDays] = useState(50);
 
+  // Harvest Record Form
+  const [harvestPlotId, setHarvestPlotId] = useState('');
+  const [harvestWeightKg, setHarvestWeightKg] = useState('');
+  const [harvestPricePerKg, setHarvestPricePerKg] = useState('8.00');
+  const [harvestDate, setHarvestDate] = useState(new Date().toISOString().split('T')[0]);
+  const [harvestNotes, setHarvestNotes] = useState('');
+
   useEffect(() => {
     loadData();
   }, [user?.id]);
@@ -54,17 +67,21 @@ export default function Registry({ lang, user }) {
       setPlots(plotData);
       if (plotData.length > 0) {
         setCropPlotId(plotData[0].id);
+        setHarvestPlotId(plotData[0].id);
       } else {
         setCropPlotId('');
+        setHarvestPlotId('');
       }
 
       const cropData = await fetchCrops(null, user?.id);
       setCrops(cropData);
+
+      const harvestData = await fetchHarvests(null, user?.id);
+      setHarvests(harvestData);
     } catch (err) {
       console.error(err);
     }
   };
-
 
   const filteredPlotsForCrop = cropFarmId
     ? plots.filter(p => p.farm_id === cropFarmId)
@@ -89,7 +106,6 @@ export default function Registry({ lang, user }) {
     }
   };
 
-
   const handleDeleteFarm = async (id) => {
     if (confirm("Deleting this farm will remove all associated plots. Continue?")) {
       try {
@@ -103,7 +119,8 @@ export default function Registry({ lang, user }) {
 
   const handleCreatePlot = async (e) => {
     e.preventDefault();
-    if (!plotName.trim() || !selectedFarmId) return alert("Plot Name and Farm are required.");
+    if (!selectedFarmId) return alert("Select a parent farm.");
+    if (!plotName.trim()) return alert("Plot Name is required.");
 
     try {
       await createPlot({
@@ -136,7 +153,8 @@ export default function Registry({ lang, user }) {
 
   const handleCreateCrop = async (e) => {
     e.preventDefault();
-    if (!cropName.trim() || !cropPlotId) return alert("Crop Name and Target Plot are required.");
+    if (!cropPlotId) return alert("Select a parent plot.");
+    if (!cropName.trim()) return alert("Crop Name is required.");
 
     try {
       await createCrop({
@@ -165,6 +183,43 @@ export default function Registry({ lang, user }) {
     }
   };
 
+  const handleCreateHarvest = async (e) => {
+    e.preventDefault();
+    if (!harvestPlotId) return alert("Sila pilih plot sasaran.");
+    if (!harvestWeightKg || parseFloat(harvestWeightKg) <= 0) return alert("Sila masukkan berat tuaian (KG).");
+    if (!harvestPricePerKg || parseFloat(harvestPricePerKg) < 0) return alert("Sila masukkan anggaran harga 1 KG (RM).");
+
+    try {
+      await createHarvest({
+        plot_id: harvestPlotId,
+        user_id: user?.id,
+        yield_weight_kg: parseFloat(harvestWeightKg),
+        price_per_kg_myr: parseFloat(harvestPricePerKg),
+        harvest_date: harvestDate,
+        notes: harvestNotes
+      });
+      setHarvestWeightKg('');
+      setHarvestNotes('');
+      loadData();
+      alert("✅ Rekod tuaian berjaya disimpan!");
+    } catch (err) {
+      alert("Error saving harvest: " + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  const handleDeleteHarvest = async (id) => {
+    if (confirm("Padam rekod tuaian ini?")) {
+      try {
+        await deleteHarvest(id);
+        loadData();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const calculatedRevenue = (parseFloat(harvestWeightKg || 0) * parseFloat(harvestPricePerKg || 0)).toFixed(2);
+
   return (
     <div className="space-y-6">
       <div>
@@ -173,10 +228,10 @@ export default function Registry({ lang, user }) {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-gray-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('farm')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition ${
+          className={`py-3 px-5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
             activeTab === 'farm' ? 'border-farmGreen-500 text-farmGreen-500' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -184,7 +239,7 @@ export default function Registry({ lang, user }) {
         </button>
         <button
           onClick={() => setActiveTab('plot')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition ${
+          className={`py-3 px-5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
             activeTab === 'plot' ? 'border-farmGreen-500 text-farmGreen-500' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -192,11 +247,19 @@ export default function Registry({ lang, user }) {
         </button>
         <button
           onClick={() => setActiveTab('crop')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition ${
+          className={`py-3 px-5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
             activeTab === 'crop' ? 'border-farmGreen-500 text-farmGreen-500' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
           {t.tabRegCrop}
+        </button>
+        <button
+          onClick={() => setActiveTab('harvest')}
+          className={`py-3 px-5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
+            activeTab === 'harvest' ? 'border-farmGreen-500 text-farmGreen-500' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          🌾 Rekod Tuaian & Anggaran RM
         </button>
       </div>
 
@@ -218,10 +281,10 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.farmLoc}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.farmLocation}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Selangor, Malaysia"
+                  placeholder="e.g. Rawang, Selangor"
                   value={farmLoc}
                   onChange={(e) => setFarmLoc(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
@@ -229,7 +292,7 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.farmSize}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.farmAreaSqFt}</label>
                 <input
                   type="number"
                   value={farmSize}
@@ -239,26 +302,45 @@ export default function Registry({ lang, user }) {
               </div>
             </div>
 
-            <button type="submit" className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
-              {t.btnRegFarm}
+            <button
+              type="submit"
+              className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+            >
+              + {t.btnAddFarm}
             </button>
           </form>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h4 className="font-bold text-gray-900 text-sm mb-3">{t.registeredFarms} ({farms.length})</h4>
-            <div className="divide-y divide-gray-100">
-              {farms.map((f) => (
-                <div key={f.id} className="py-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-gray-900 text-sm">{f.name}</div>
-                    <div className="text-xs text-gray-500">{f.location || 'No location set'} • {f.size_sq_ft} sq ft</div>
+          {/* Existing Farms List */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-gray-900 text-base">{t.existingFarmsList} ({farms.length})</h3>
+            {farms.length === 0 ? (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm">
+                No registered farms found. Use the form above to add your first farm.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {farms.map(f => (
+                  <div key={f.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-gray-900 flex items-center space-x-2">
+                        <Building className="w-4 h-4 text-farmGreen-500" />
+                        <span>{f.name}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 flex items-center space-x-3">
+                        <span>📍 {f.location || 'N/A'}</span>
+                        <span>📐 {f.size_sq_ft} sq ft</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteFarm(f.id)}
+                      className="text-gray-400 hover:text-red-500 p-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button onClick={() => handleDeleteFarm(f.id)} className="text-gray-400 hover:text-red-500 p-1">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -275,7 +357,7 @@ export default function Registry({ lang, user }) {
                 <select
                   value={selectedFarmId}
                   onChange={(e) => setSelectedFarmId(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold"
                 >
                   {farms.map(f => (
                     <option key={f.id} value={f.id}>{f.name}</option>
@@ -287,7 +369,7 @@ export default function Registry({ lang, user }) {
                 <label className="block text-xs font-bold text-gray-700 mb-1">{t.plotName}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Plot 4"
+                  placeholder="e.g. Plot A1 - Bendera"
                   value={plotName}
                   onChange={(e) => setPlotName(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
@@ -295,9 +377,19 @@ export default function Registry({ lang, user }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cycleStart}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.plotSizeSqFt}</label>
+                <input
+                  type="number"
+                  value={plotSize}
+                  onChange={(e) => setPlotSize(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cycleStartDate}</label>
                 <input
                   type="date"
                   value={cycleStart}
@@ -307,7 +399,7 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cycleEnd}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cycleEndDate}</label>
                 <input
                   type="date"
                   value={cycleEnd}
@@ -317,9 +409,10 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.costBudget}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.costBudgetMyr}</label>
                 <input
                   type="number"
+                  placeholder="e.g. 500"
                   value={costBudget}
                   onChange={(e) => setCostBudget(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
@@ -328,43 +421,64 @@ export default function Registry({ lang, user }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">{t.plotNotes}</label>
-              <textarea
-                placeholder="Soil type, irrigation row, microclimate notes, etc."
+              <label className="block text-xs font-bold text-gray-700 mb-1">{t.notesLabel}</label>
+              <input
+                type="text"
+                placeholder="Optional notes or soil info"
                 value={plotNotes}
                 onChange={(e) => setPlotNotes(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm h-20"
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
               />
             </div>
 
-            <button type="submit" className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
-              {t.btnRegPlot}
+            <button
+              type="submit"
+              className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+            >
+              + {t.btnAddPlot}
             </button>
           </form>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h4 className="font-bold text-gray-900 text-sm mb-3">{t.registeredPlots} ({plots.length})</h4>
-            <div className="divide-y divide-gray-100">
-              {plots.map((p) => {
-                const farmObj = farms.find(f => f.id === p.farm_id);
-                return (
-                  <div key={p.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-gray-900 text-sm">{p.name} <span className="text-xs font-normal text-gray-500">({farmObj?.name || 'Farm'})</span></div>
-                      <div className="text-xs text-gray-500">Cycle: {p.cycle_start_date} to {p.cycle_end_date} • {p.size_sq_ft} sq ft</div>
+          {/* Existing Plots List */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-gray-900 text-base">{t.existingPlotsList} ({plots.length})</h3>
+            {plots.length === 0 ? (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm">
+                No registered plots found. Use the form above to add your first plot.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {plots.map(p => {
+                  const parentFarm = farms.find(f => f.id === p.farm_id);
+                  return (
+                    <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-gray-900 flex items-center space-x-2">
+                          <MapPin className="w-4 h-4 text-farmGreen-500" />
+                          <span>{p.name}</span>
+                          <span className="text-xs text-gray-400">({parentFarm?.name || 'Unknown Farm'})</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                          <div>📅 Cycle: {p.cycle_start_date} to {p.cycle_end_date}</div>
+                          <div>💰 Budget: MYR {p.cost_budget_myr} | 📐 {p.size_sq_ft} sq ft</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeletePlot(p.id)}
+                        className="text-gray-400 hover:text-red-500 p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button onClick={() => handleDeletePlot(p.id)} className="text-gray-400 hover:text-red-500 p-1">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* TAB 3: REGISTER CROPS (INTERCROPPING) */}
+      {/* TAB 3: REGISTER CROP */}
       {activeTab === 'crop' && (
         <div className="space-y-6">
           <form onSubmit={handleCreateCrop} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
@@ -375,13 +489,8 @@ export default function Registry({ lang, user }) {
                 <label className="block text-xs font-bold text-gray-700 mb-1">{t.selectTargetFarm}</label>
                 <select
                   value={cropFarmId}
-                  onChange={(e) => {
-                    const fId = e.target.value;
-                    setCropFarmId(fId);
-                    const matchingPlots = plots.filter(p => p.farm_id === fId);
-                    if (matchingPlots.length > 0) setCropPlotId(matchingPlots[0].id);
-                  }}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-800"
+                  onChange={(e) => setCropFarmId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold"
                 >
                   {farms.map(f => (
                     <option key={f.id} value={f.id}>{f.name}</option>
@@ -394,7 +503,7 @@ export default function Registry({ lang, user }) {
                 <select
                   value={cropPlotId}
                   onChange={(e) => setCropPlotId(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold"
                 >
                   {filteredPlotsForCrop.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -403,12 +512,12 @@ export default function Registry({ lang, user }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cropName}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cropNameLabel}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Pakchoy / Bendi / Yardlong Bean"
+                  placeholder="e.g. Bendi / Terung / Tomato"
                   value={cropName}
                   onChange={(e) => setCropName(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
@@ -416,10 +525,10 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cropVariety}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.cropVarietyLabel}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Green Fortune F1"
+                  placeholder="e.g. F1 Hybrid 803"
                   value={cropVariety}
                   onChange={(e) => setCropVariety(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
@@ -427,7 +536,17 @@ export default function Registry({ lang, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">{t.harvestDays}</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.plantingDateLabel}</label>
+                <input
+                  type="date"
+                  value={cropPlantingDate}
+                  onChange={(e) => setCropPlantingDate(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.harvestTargetDaysLabel}</label>
                 <input
                   type="number"
                   value={harvestDays}
@@ -437,36 +556,183 @@ export default function Registry({ lang, user }) {
               </div>
             </div>
 
-            <button type="submit" className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
-              {t.btnRegCrop}
+            <button
+              type="submit"
+              className="bg-farmGreen-500 hover:bg-farmGreen-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+            >
+              + {t.btnAddCrop}
             </button>
           </form>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h4 className="font-bold text-gray-900 text-sm mb-3">{t.registeredCrops} ({crops.length})</h4>
-            <div className="divide-y divide-gray-100">
-              {crops.map((c) => {
-                const targetPlot = plots.find(p => p.id === c.plot_id);
-                const targetFarm = targetPlot ? farms.find(f => f.id === targetPlot.farm_id) : null;
-                return (
-                  <div key={c.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-gray-900 text-sm">🌿 {c.name} {c.variety ? `(${c.variety})` : ''}</div>
-                      <div className="text-xs text-gray-500">
-                        📍 Farm: <strong>{targetFarm?.name || 'Farm'}</strong> ➔ Plot: <strong>{targetPlot?.name || 'Plot'}</strong> • Target Cycle: {c.harvest_target_days} days
+          {/* Existing Registered Crops List */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-gray-900 text-base">{t.registeredCropsList} ({crops.length})</h3>
+            {crops.length === 0 ? (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm">
+                No registered crops found. Use the form above to add intercropping records.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {crops.map(c => {
+                  const parentPlot = plots.find(p => p.id === c.plot_id);
+                  const parentFarm = farms.find(f => f.id === parentPlot?.farm_id);
+                  return (
+                    <div key={c.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-gray-900 flex items-center space-x-2">
+                          <Sprout className="w-4 h-4 text-emerald-600" />
+                          <span>{c.name}</span>
+                          <span className="text-xs text-gray-500 font-normal">({c.variety || 'Standard'})</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                          <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
+                          <div>🌱 Planted: {c.planting_date} | ⏱️ Harvest Cycle: ~{c.harvest_target_days} days</div>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleDeleteCrop(c.id)}
+                        className="text-gray-400 hover:text-red-500 p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button onClick={() => handleDeleteCrop(c.id)} className="text-gray-400 hover:text-red-500 p-1">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: HARVEST RECORDS & REVENUE ESTIMATION */}
+      {activeTab === 'harvest' && (
+        <div className="space-y-6">
+          <form onSubmit={handleCreateHarvest} className="bg-white border border-emerald-200 bg-emerald-50/20 rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 className="font-bold text-emerald-900 text-base flex items-center gap-2">
+              <span>🌾</span> Tambah Rekod Tuaian & Anggaran RM
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">PILIH PLOT SASARAN</label>
+                <select
+                  value={harvestPlotId}
+                  onChange={(e) => setHarvestPlotId(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold"
+                >
+                  {plots.map(p => {
+                    const f = farms.find(farm => farm.id === p.farm_id);
+                    return (
+                      <option key={p.id} value={p.id}>{p.name} ({f?.name || 'Farm'})</option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">TARIKH TUAIAN</label>
+                <input
+                  type="date"
+                  value={harvestDate}
+                  onChange={(e) => setHarvestDate(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">BERAT TUAIAN (KG)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 15.5"
+                  value={harvestWeightKg}
+                  onChange={(e) => setHarvestWeightKg(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-emerald-700"
+                />
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">ANGGARAN HARGA PASARAN (RM / KG)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 8.00"
+                  value={harvestPricePerKg}
+                  onChange={(e) => setHarvestPricePerKg(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-amber-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">JUMLAH ANGGARAN PENDAPATAN (RM)</label>
+                <div className="w-full bg-amber-100/70 border border-amber-300 rounded-xl px-3 py-2 text-sm font-black text-amber-900">
+                  RM {calculatedRevenue}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">NOTA TUAIAN (PILIHAN)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Gred A Bendi Kualiti Tinggi"
+                  value={harvestNotes}
+                  onChange={(e) => setHarvestNotes(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow transition"
+            >
+              + Simpan Rekod Tuaian
+            </button>
+          </form>
+
+          {/* Existing Harvest Records List */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-gray-900 text-base">Senarai Log Tuaian ({harvests.length})</h3>
+            {harvests.length === 0 ? (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm">
+                Tiada rekod tuaian ditemui. Gunakan borang di atas untuk memasukkan hasil tuaian pertama anda.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {harvests.map(h => {
+                  const parentPlot = plots.find(p => p.id === h.plot_id);
+                  const parentFarm = farms.find(f => f.id === parentPlot?.farm_id);
+                  return (
+                    <div key={h.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                      <div>
+                        <div className="font-black text-gray-900 text-sm flex items-center space-x-2">
+                          <span>🌾 {h.yield_weight_kg} kg</span>
+                          <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-full font-bold">
+                            RM {h.total_revenue_myr.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                          <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
+                          <div>📅 Tarikh: {h.harvest_date} | 💵 Harga/kg: RM {h.price_per_kg_myr.toFixed(2)}</div>
+                          {h.notes && <div className="italic text-gray-600">📝 {h.notes}</div>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteHarvest(h.id)}
+                        className="text-gray-400 hover:text-red-500 p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
-
 }

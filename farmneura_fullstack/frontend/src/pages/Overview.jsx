@@ -44,8 +44,8 @@ export default function Overview({ onSelectAction, lang, user }) {
         <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{t.overviewSubtitle}</p>
       </div>
 
-      {/* 2x2 Metric Cards Summary Grid */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      {/* Metric Cards Summary Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Card 1: Overall Crop Health */}
         <div className="bg-white border border-gray-200 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col justify-between min-h-[90px]">
           <div className="flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold text-gray-500">
@@ -86,10 +86,33 @@ export default function Overview({ onSelectAction, lang, user }) {
             <span className="truncate">{t.metricActivePlots}</span>
           </div>
           <div className="text-xl sm:text-2xl font-black text-gray-900 mt-2">
-            {data?.active_plots || 0}
+            {data?.active_plots || 0} <span className="text-xs font-bold text-gray-500">Plot</span>
+          </div>
+        </div>
+
+        {/* Card 5: Total Harvest Yield (KG) */}
+        <div className="bg-white border border-emerald-200 bg-emerald-50/30 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col justify-between min-h-[90px]">
+          <div className="flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold text-emerald-800">
+            <span className="text-sm">🌾</span>
+            <span className="truncate">Jumlah Tuaian (KG)</span>
+          </div>
+          <div className="text-xl sm:text-2xl font-black text-emerald-800 mt-2">
+            {data?.total_harvest_kg || 0} <span className="text-xs font-bold text-emerald-600">kg</span>
+          </div>
+        </div>
+
+        {/* Card 6: Estimated Revenue (RM) */}
+        <div className="bg-white border border-amber-200 bg-amber-50/30 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col justify-between min-h-[90px]">
+          <div className="flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold text-amber-800">
+            <span className="text-sm">💰</span>
+            <span className="truncate">Anggaran Hasil RM</span>
+          </div>
+          <div className="text-xl sm:text-2xl font-black text-amber-900 mt-2">
+            RM {(data?.total_harvest_revenue_myr || 0).toFixed(2)}
           </div>
         </div>
       </div>
+
 
       {/* Today's Action List */}
       <div className="space-y-3">

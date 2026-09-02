@@ -130,3 +130,27 @@ class QuickScanSaveRequest(BaseModel):
     intervention: str
     field_notes: Optional[str] = None
 
+# --- Harvest Schemas ---
+class HarvestCreate(BaseModel):
+    plot_id: str
+    user_id: Optional[str] = None
+    yield_weight_kg: float
+    price_per_kg_myr: float
+    harvest_date: str
+    notes: Optional[str] = None
+
+class HarvestResponse(BaseModel):
+    id: str
+    plot_id: str
+    user_id: Optional[str] = None
+    yield_weight_kg: float
+    price_per_kg_myr: float
+    total_revenue_myr: float
+    harvest_date: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
