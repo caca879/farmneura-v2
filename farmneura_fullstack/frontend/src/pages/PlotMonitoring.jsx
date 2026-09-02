@@ -736,85 +736,95 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
       {activeTab === 'history' && (
         /* History Log Tab */
         <div className="space-y-4">
+          <h3 className="font-bold text-gray-900 text-base">{t.historyLogHeader} {selectedPlotObj?.name}</h3>
 
-          <h3 className="font-bold text-gray-900 text-base">Historical Logs for {selectedPlotObj?.name}</h3>
           
           {history.length === 0 ? (
             <div className="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-500 text-sm">
-              No historical logs found. Take an inspection photo to create your first record.
+              {t.noHistory}
             </div>
           ) : (
             <div className="space-y-3">
-              {history.map((rec) => (
-                <div key={rec.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-2 flex-wrap gap-1">
-                    <div className="flex items-center space-x-2 text-xs font-bold text-gray-800 flex-wrap gap-1">
-                      <Calendar className="w-4 h-4 text-farmGreen-500" />
-                      <span>{rec.created_at}</span>
-                      <span className="bg-green-100 text-farmGreen-700 px-2 py-0.5 rounded-full font-medium">
-                        {rec.stage_name} (Day {rec.cycle_day})
-                      </span>
-                      {(() => {
-                        const cropMatch = crops.find(c => c.id === rec.crop_id);
-                        if (cropMatch) {
-                          return (
-                            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1">
-                              <span>🌿 {cropMatch.name}</span>
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
+              {history.map((rec) => {
+                const imgSrc = rec.image_url?.startsWith('http') 
+                  ? rec.image_url 
+                  : `${import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '') : ''}${rec.image_url}`;
+
+                return (
+                  <div key={rec.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2 flex-wrap gap-1">
+                      <div className="flex items-center space-x-2 text-xs font-bold text-gray-800 flex-wrap gap-1">
+                        <Calendar className="w-4 h-4 text-farmGreen-500" />
+                        <span>{rec.created_at}</span>
+                        <span className="bg-green-100 text-farmGreen-700 px-2 py-0.5 rounded-full font-medium">
+                          {rec.stage_name} (Day {rec.cycle_day})
+                        </span>
+                        {(() => {
+                          const cropMatch = crops.find(c => c.id === rec.crop_id);
+                          if (cropMatch) {
+                            return (
+                              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1">
+                                <span>{cropMatch.name}</span>
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteHistory(rec.id)}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteHistory(rec.id)}
-                      className="text-gray-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                    {rec.interval_tracking && (
+                      <div className="bg-green-50 border-l-4 border-green-500 p-2.5 rounded text-xs text-green-800 font-medium">
+                        ⏱️ {rec.interval_tracking}
+                      </div>
+                    )}
 
-                  {rec.interval_tracking && (
-                    <div className="bg-green-50 border-l-4 border-green-500 p-2.5 rounded text-xs text-green-800 font-medium">
-                      ⏱️ {rec.interval_tracking}
-                    </div>
-                  )}
+                    <div className="flex space-x-3">
+                      <img 
+                        src={imgSrc} 
+                        alt="Canopy" 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1592417817098-8f3d6eb247a5?w=200&auto=format&fit=crop&q=80';
+                        }}
+                        onClick={() => setModalImage(imgSrc)}
+                        className="w-24 h-24 object-cover rounded-lg border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-85 transition" 
+                      />
+                      <div className="space-y-1 text-xs">
+                        <div className="font-semibold text-gray-900">
+                          {rec.diagnosis?.toLowerCase().includes('okra pod') || rec.diagnosis?.toLowerCase().includes('pod') ? (
+                            <span>🥒 Jumlah Buah Bendi Dikesan: {rec.leaf_count}</span>
+                          ) : (
+                            <span>🍃 {t.leavesDetectedLabel} {rec.leaf_count}</span>
+                          )}
+                        </div>
+                        <div className="text-gray-700"><strong>{t.diagnosisLabel}</strong> {renderFormattedText(rec.diagnosis)}</div>
 
-                  <div className="flex space-x-3">
-                    <img 
-                      src={rec.image_url} 
-                      alt="Canopy" 
-                      onClick={() => setModalImage(rec.image_url)}
-                      className="w-24 h-24 object-cover rounded-lg border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-85 transition" 
-                    />
-                    <div className="space-y-1 text-xs">
-                      <div className="font-semibold text-gray-900">
-                        {rec.diagnosis?.toLowerCase().includes('okra pod') || rec.diagnosis?.toLowerCase().includes('pod') ? (
-                          <span>🥒 Okra Pods Detected: {rec.leaf_count}</span>
-                        ) : (
-                          <span>🍃 Leaves Detected: {rec.leaf_count}</span>
+                        <div className="text-gray-800 whitespace-pre-line leading-relaxed mt-1">
+                          <strong>{t.interventionLabel}</strong> {renderFormattedText(rec.intervention)}
+                        </div>
+                        {rec.field_notes && (
+                          <div className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200 mt-1">
+                            📝 <strong>Nota Lapangan:</strong> {rec.field_notes}
+                          </div>
                         )}
                       </div>
-                      <div className="text-gray-700"><strong>Diagnosis:</strong> {renderFormattedText(rec.diagnosis)}</div>
-
-                      <div className="text-gray-800 whitespace-pre-line leading-relaxed mt-1">
-                        <strong>Intervention:</strong> {renderFormattedText(rec.intervention)}
-                      </div>
-                      {rec.field_notes && (
-                        <div className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200 mt-1">
-                          📝 <strong>Field Notes:</strong> {rec.field_notes}
-                        </div>
-                      )}
                     </div>
-
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       )}
+
 
       {/* Fullscreen Image Lightbox Modal */}
       {modalImage && (

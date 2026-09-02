@@ -90,17 +90,17 @@ export const translations = {
     btnSaveQuickScan: "💾 Simpan Rekod ke Log Plot Terpilih",
 
     iotStreamTitle: "🌐 Aliran Telemetri IoT Awan",
-    btnSyncIot: "Sync Data IoT",
+    btnSyncIot: "Dapatkan Bacaan Penderia",
     soilMoisture: "💧 Kelembapan Tanah",
     airTemp: "🌡️ Suhu Udara",
     soilEc: "🧪 EC Tanah",
     soilPh: "🧪 pH Tanah",
 
-    captureTitle: "Tangkap Kesihatan Kanopi",
-    btnTakeLivePhoto: "Tangkap Gambar (Kamera Telefon)",
-    btnChooseGallery: "Pilih Dari Galeri",
+    captureTitle: "Pantau Kesihatan Tanaman",
+    btnTakeLivePhoto: "Ambil Gambar Tanaman Dari Atas",
+    btnChooseGallery: "Pilih Gambar Dari Galeri",
     photoSelected: "Gambar Dipilih:",
-    aiModelLabel: "🤖 Model Visi AI",
+    aiModelLabel: "🤖 Model Penglihatan AI",
     systemLangLabel: "🌐 Bahasa Sistem & AI",
     btnDiagnose: "Diagnosis Kesihatan Tanaman & LLM Fusion",
     btnProcessing: "Memproses Bilangan Daun & LLM Fusion...",
@@ -113,10 +113,15 @@ export const translations = {
     btnSaveRecord: "💾 Simpan Rekod ke Log Plot",
 
     // History Log
+    historyLogHeader: "Rekod Pemantauan Plot",
     intervalTracking: "Selang Masa:",
     foliageExpansion: "Perluasan Kanopi Daun:",
-    baselinePhoto: "🌱 Gambar Asas: Pemeriksaan tanaman pertama direkodkan untuk plot ini.",
-    noHistory: "Tiada log sejarah ditemui. Tangkap gambar pemeriksaan untuk mencipta rekod pertama anda.",
+    baselinePhoto: "🌱 Gambar Asas: Pemeriksaan awal tanaman telah direkodkan untuk plot ini.",
+    noHistory: "Tiada rekod pemantauan ditemui. Tangkap gambar pemeriksaan untuk mencipta rekod pertama anda.",
+    leavesDetectedLabel: "Daun Dikesan:",
+    diagnosisLabel: "Diagnosis:",
+    interventionLabel: "Tindakan / Cadangan:",
+
 
     // Registry Page
     registryTitle: "Pendaftaran Ladang, Plot & Tanaman",
@@ -244,15 +249,15 @@ export const translations = {
     btnSaveQuickScan: "💾 Save to Selected Plot Log",
 
     iotStreamTitle: "🌐 Cloud IoT Telemetry Stream",
-    btnSyncIot: "Sync IoT Data",
+    btnSyncIot: "Fetch Sensor Readings",
     soilMoisture: "💧 Soil Moisture",
     airTemp: "🌡️ Air Temp",
     soilEc: "🧪 Soil EC",
     soilPh: "🧪 Soil pH",
 
-    captureTitle: "Capture Canopy Health",
-    btnTakeLivePhoto: "Take Live Photo (Mobile Camera)",
-    btnChooseGallery: "Choose From Gallery",
+    captureTitle: "Monitor Crop Health",
+    btnTakeLivePhoto: "Take Crop Photo From Above",
+    btnChooseGallery: "Choose Photo From Gallery",
     photoSelected: "Photo Selected:",
     aiModelLabel: "🤖 AI Vision Model",
     systemLangLabel: "🌐 System & AI Language",
@@ -267,10 +272,15 @@ export const translations = {
     btnSaveRecord: "💾 Save Record to Plot Log",
 
     // History Log
+    historyLogHeader: "Plot Inspection Records for",
     intervalTracking: "Interval Tracking:",
     foliageExpansion: "Foliage Expansion:",
     baselinePhoto: "🌱 Baseline Photo: Initial crop inspection recorded for this plot.",
-    noHistory: "No historical logs found. Take an inspection photo to create your first record.",
+    noHistory: "No inspection records found. Take an inspection photo to create your first record.",
+    leavesDetectedLabel: "Leaves Detected:",
+    diagnosisLabel: "Diagnosis:",
+    interventionLabel: "Intervention / Recommendation:",
+
 
     // Registry Page
     registryTitle: "Farm, Plot & Crop Registry",
