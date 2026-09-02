@@ -47,8 +47,6 @@ export const translations = {
     ctaBottomTitle: "Sedia untuk Meningkatkan Hasil Ladang Anda?",
     ctaBottomDesc: "Daftar akaun percuma hari ini dan nikmati pengurusan pertanian berasaskan kecerdasan buatan.",
 
-
-
     // Overview Page
     greetingMorning: "Selamat Pagi, Petani",
     greetingAfternoon: "Selamat Tengah Hari, Petani",
@@ -122,42 +120,56 @@ export const translations = {
     diagnosisLabel: "Diagnosis:",
     interventionLabel: "Tindakan / Cadangan:",
 
-
     // Registry Page
     registryTitle: "Pendaftaran Ladang, Plot & Tanaman",
     registrySubtitle: "Daftar dan urus ladang jitu, sempadan plot, dan varieti tanaman anda.",
     tabRegFarm: "🚜 Daftar Ladang",
     tabRegPlot: "📐 Daftar Plot",
     tabRegCrop: "🌿 Daftar Tanaman",
+    tabRegHarvest: "🌾 Rekod Tuaian & Anggaran RM",
 
     regFarmHeader: "Daftar Lokasi Ladang Baharu",
     regPlotHeader: "Daftar Plot Baharu dalam Ladang",
     regCropHeader: "Daftar Varieti Tanaman ke Plot",
+    regHarvestHeader: "🌾 Tambah Rekod Tuaian & Anggaran RM",
 
     selectParentFarm: "Pilih Ladang Induk",
     selectTargetFarm: "Pilih Ladang Sasaran",
     selectTargetPlot: "Pilih Plot Sasaran dalam Ladang",
+    selectTargetPlotHarvest: "Pilih Plot Sasaran",
 
     farmName: "Nama Ladang",
-    farmLoc: "Lokasi / Koordinat",
-    farmSize: "Jumlah Saiz (kaki persegi)",
-    btnRegFarm: "Daftar Ladang",
-    registeredFarms: "Ladang Berdaftar",
+    farmLocation: "Lokasi / Koordinat",
+    farmAreaSqFt: "Jumlah Saiz (kaki persegi)",
+    btnAddFarm: "Daftar Ladang",
+    existingFarmsList: "Senarai Ladang Berdaftar",
 
     plotName: "Nama Plot",
-    cycleStart: "Tarikh Mula Kitaran",
-    cycleEnd: "Tarikh Tamat Kitaran",
-    costBudget: "Anggaran Bajet Kos (MYR)",
-    plotNotes: "Nota Plot",
-    btnRegPlot: "Daftar Plot",
-    registeredPlots: "Plot Berdaftar",
+    plotSizeSqFt: "Saiz Plot (kaki persegi)",
+    cycleStartDate: "Tarikh Mula Kitaran",
+    cycleEndDate: "Tarikh Tamat Kitaran",
+    costBudgetMyr: "Anggaran Bajet Kos (RM)",
+    notesLabel: "Nota Plot",
+    btnAddPlot: "Daftar Plot",
+    existingPlotsList: "Senarai Plot Berdaftar",
 
-    cropName: "Nama Tanaman",
-    cropVariety: "Varieti Tanaman",
-    harvestDays: "Sasaran Kitaran Tuai (Hari)",
-    btnRegCrop: "Daftar Varieti Tanaman",
-    registeredCrops: "Tanaman Berdaftar"
+    cropNameLabel: "Nama Tanaman",
+    cropVarietyLabel: "Varieti Tanaman",
+    plantingDateLabel: "Tarikh Tanam",
+    harvestTargetDaysLabel: "Sasaran Kitaran Tuai (Hari)",
+    btnAddCrop: "Daftar Varieti Tanaman",
+    registeredCropsList: "Senarai Tanaman Berdaftar",
+
+    harvestDateLabel: "Tarikh Tuaian",
+    harvestWeightLabel: "Berat Tuaian (KG)",
+    harvestPriceLabel: "Anggaran Harga Pasaran (RM / KG)",
+    totalRevenueLabel: "Jumlah Anggaran Pendapatan (RM)",
+    harvestNotesLabel: "Nota Tuaian (Pilihan)",
+    btnSaveHarvest: "Simpan Rekod Tuaian",
+    harvestListTitle: "Senarai Log Tuaian",
+    noHarvestsMsg: "Tiada rekod tuaian ditemui. Gunakan borang di atas untuk memasukkan hasil tuaian pertama anda."
   },
+
   "🇬🇧 English": {
     // Navigation
     overviewTab: "📋 Overview",
@@ -175,12 +187,12 @@ export const translations = {
     emailLabel: "Email Address",
     passwordLabel: "Password",
     confirmPasswordLabel: "Confirm Password",
-    btnLogin: "Log In to System",
+    btnLogin: "System Login",
     btnSignup: "Create New Account",
     btnLogout: "Log Out",
     welcomeUser: "Welcome,",
     authSuccessMsg: "Login successful! Loading dashboard...",
-    signupSuccessMsg: "Account successfully registered! Loading dashboard...",
+    signupSuccessMsg: "Account created successfully! Loading dashboard...",
 
     // Landing Page
     landingTagline: "AI-Powered Precision Agriculture System",
@@ -205,8 +217,6 @@ export const translations = {
     step3Desc: "Receive instant prevention steps and save to your plot log.",
     ctaBottomTitle: "Ready to Maximize Your Farm Yield?",
     ctaBottomDesc: "Sign up for a free account today and experience AI-driven precision farming.",
-
-
 
     // Overview Page
     greetingMorning: "Good Morning, Farmer",
@@ -281,40 +291,53 @@ export const translations = {
     diagnosisLabel: "Diagnosis:",
     interventionLabel: "Intervention / Recommendation:",
 
-
     // Registry Page
     registryTitle: "Farm, Plot & Crop Registry",
     registrySubtitle: "Register and manage your precision farms, plot boundaries, and crop varieties.",
     tabRegFarm: "🚜 Register Farm",
     tabRegPlot: "📐 Register Plot",
     tabRegCrop: "🌿 Register Crops",
+    tabRegHarvest: "🌾 Harvest Records & Revenue",
 
     regFarmHeader: "Register a New Farm Location",
     regPlotHeader: "Register a New Plot inside a Farm",
     regCropHeader: "Register a Crop Variety to a Plot",
+    regHarvestHeader: "🌾 Add Harvest Record & Estimated Revenue",
 
     selectParentFarm: "Select Parent Farm",
     selectTargetFarm: "Select Target Farm",
     selectTargetPlot: "Select Target Plot in Farm",
+    selectTargetPlotHarvest: "Select Target Plot",
 
     farmName: "Farm Name",
-    farmLoc: "Location / Coordinates",
-    farmSize: "Total Size (sq ft)",
-    btnRegFarm: "Register Farm",
-    registeredFarms: "Registered Farms",
+    farmLocation: "Location / Coordinates",
+    farmAreaSqFt: "Total Size (sq ft)",
+    btnAddFarm: "Register Farm",
+    existingFarmsList: "Registered Farms",
 
     plotName: "Plot Name",
-    cycleStart: "Cycle Start Date",
-    cycleEnd: "Cycle End Date",
-    costBudget: "Est. Cost Budget (MYR)",
-    plotNotes: "Plot Notes",
-    btnRegPlot: "Register Plot",
-    registeredPlots: "Registered Plots",
+    plotSizeSqFt: "Plot Size (sq ft)",
+    cycleStartDate: "Cycle Start Date",
+    cycleEndDate: "Cycle End Date",
+    costBudgetMyr: "Est. Cost Budget (RM)",
+    notesLabel: "Plot Notes",
+    btnAddPlot: "Register Plot",
+    existingPlotsList: "Registered Plots",
 
-    cropName: "Crop Name",
-    cropVariety: "Crop Variety",
-    harvestDays: "Target Harvest Cycle (Days)",
-    btnRegCrop: "Register Crop Variety",
-    registeredCrops: "Registered Crops"
+    cropNameLabel: "Crop Name",
+    cropVarietyLabel: "Crop Variety",
+    plantingDateLabel: "Planting Date",
+    harvestTargetDaysLabel: "Target Harvest Cycle (Days)",
+    btnAddCrop: "Register Crop Variety",
+    registeredCropsList: "Registered Crops",
+
+    harvestDateLabel: "Harvest Date",
+    harvestWeightLabel: "Harvest Yield (KG)",
+    harvestPriceLabel: "Estimated Market Price (RM / KG)",
+    totalRevenueLabel: "Total Estimated Revenue (RM)",
+    harvestNotesLabel: "Harvest Notes (Optional)",
+    btnSaveHarvest: "Save Harvest Record",
+    harvestListTitle: "Harvest Log Records",
+    noHarvestsMsg: "No harvest records found. Use the form above to add your first harvest yield."
   }
 };
