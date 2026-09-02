@@ -10,7 +10,7 @@ router = APIRouter(prefix="/farms", tags=["Farms"])
 @router.get("", response_model=List[FarmResponse])
 def get_farms(user_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     if user_id:
-        return db.query(Farm).filter((Farm.user_id == user_id) | (Farm.user_id == None)).all()
+        return db.query(Farm).filter(Farm.user_id == user_id).all()
     return db.query(Farm).all()
 
 @router.post("", response_model=FarmResponse, status_code=status.HTTP_201_CREATED)

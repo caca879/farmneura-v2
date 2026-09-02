@@ -12,10 +12,11 @@ def get_crops(plot_id: Optional[str] = Query(None), user_id: Optional[str] = Que
     query = db.query(Crop)
     
     if user_id:
-        user_farms = db.query(Farm).filter((Farm.user_id == user_id) | (Farm.user_id == None)).all()
+        user_farms = db.query(Farm).filter(Farm.user_id == user_id).all()
         user_farm_ids = [f.id for f in user_farms]
         if not user_farm_ids:
             return []
+
         user_plots = db.query(Plot).filter(Plot.farm_id.in_(user_farm_ids)).all()
         user_plot_ids = [p.id for p in user_plots]
         if not user_plot_ids:

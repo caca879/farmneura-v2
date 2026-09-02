@@ -12,9 +12,10 @@ MYT = timezone(timedelta(hours=8))
 @router.get("/summary", response_model=Dict[str, Any])
 def get_overview_summary(user_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     if user_id:
-        user_farms = db.query(Farm).filter((Farm.user_id == user_id) | (Farm.user_id == None)).all()
+        user_farms = db.query(Farm).filter(Farm.user_id == user_id).all()
         farm_ids = [f.id for f in user_farms]
         plots = db.query(Plot).filter(Plot.farm_id.in_(farm_ids)).all() if farm_ids else []
+
     else:
         plots = db.query(Plot).all()
 
