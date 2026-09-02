@@ -75,7 +75,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   const loadCrops = async (pId) => {
     try {
-      const data = await fetchCrops(pId);
+      const data = await fetchCrops(pId, user?.id);
       setCrops(data);
       if (data.length > 0) {
         setActiveCropId(data[0].id);
@@ -87,6 +87,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
       console.error(err);
     }
   };
+
 
   const autoSetModelPref = (cropName) => {
     if (!cropName) return;
@@ -101,15 +102,22 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   const loadFarms = async () => {
     try {
-      const data = await fetchFarms();
+      const data = await fetchFarms(user?.id);
       setFarms(data);
-      if (data.length > 0 && !activeFarmId) {
-        setActiveFarmId(data[0].id);
+      if (data.length > 0) {
+        if (!data.some(f => f.id === activeFarmId)) {
+          setActiveFarmId(data[0].id);
+        }
+      } else {
+        setActiveFarmId('');
+        setPlots([]);
+        setActivePlotId('');
       }
     } catch (err) {
       console.error(err);
     }
   };
+
 
   const loadPlots = async (fId) => {
     try {
@@ -163,7 +171,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   const loadSavePlots = async (fId) => {
     try {
-      const data = await fetchPlots(fId);
+      const data = await fetchPlots(fId, user?.id);
       setSavePlots(data);
       if (data.length > 0) {
         setSavePlotId(data[0].id);
@@ -177,7 +185,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   const loadSaveCrops = async (pId) => {
     try {
-      const data = await fetchCrops(pId);
+      const data = await fetchCrops(pId, user?.id);
       setSaveCrops(data);
       if (data.length > 0) {
         setSaveCropId(data[0].id);
@@ -188,6 +196,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
       console.error(err);
     }
   };
+
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -314,9 +323,13 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
             }}
             className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-farmGreen-500 focus:outline-none"
           >
-            {farms.map(f => (
-              <option key={f.id} value={f.id}>{f.name}</option>
-            ))}
+            {farms.length === 0 ? (
+              <option value="">{lang?.includes('Melayu') ? 'Tiada Ladang Berdaftar' : 'No Registered Farms'}</option>
+            ) : (
+              farms.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))
+            )}
           </select>
         </div>
 
@@ -330,9 +343,14 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
             }}
             className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-farmGreen-500 focus:outline-none"
           >
-            {plots.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
+            {plots.length === 0 ? (
+              <option value="">{lang?.includes('Melayu') ? 'Tiada Plot Berdaftar' : 'No Registered Plots'}</option>
+            ) : (
+              plots.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))
+            )}
+
           </select>
         </div>
 
