@@ -38,9 +38,12 @@ export const deleteFarm = async (farmId) => {
   return res.data;
 };
 
-export const fetchPlots = async (farmId = null) => {
-  const url = farmId ? `${API_BASE}/plots?farm_id=${farmId}` : `${API_BASE}/plots`;
-  const res = await axios.get(url);
+export const fetchPlots = async (farmId = null, userId = null) => {
+  const params = [];
+  if (farmId) params.push(`farm_id=${farmId}`);
+  if (userId) params.push(`user_id=${userId}`);
+  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+  const res = await axios.get(`${API_BASE}/plots${queryStr}`);
   return res.data;
 };
 
@@ -54,11 +57,15 @@ export const deletePlot = async (plotId) => {
   return res.data;
 };
 
-export const fetchCrops = async (plotId = null) => {
-  const url = plotId ? `${API_BASE}/crops?plot_id=${plotId}` : `${API_BASE}/crops`;
-  const res = await axios.get(url);
+export const fetchCrops = async (plotId = null, userId = null) => {
+  const params = [];
+  if (plotId) params.push(`plot_id=${plotId}`);
+  if (userId) params.push(`user_id=${userId}`);
+  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+  const res = await axios.get(`${API_BASE}/crops${queryStr}`);
   return res.data;
 };
+
 
 export const createCrop = async (cropData) => {
   const res = await axios.post(`${API_BASE}/crops`, cropData);

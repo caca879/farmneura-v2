@@ -45,18 +45,26 @@ export default function Registry({ lang, user }) {
       if (farmData.length > 0) {
         setSelectedFarmId(farmData[0].id);
         setCropFarmId(farmData[0].id);
+      } else {
+        setSelectedFarmId('');
+        setCropFarmId('');
       }
 
-      const plotData = await fetchPlots();
+      const plotData = await fetchPlots(null, user?.id);
       setPlots(plotData);
-      if (plotData.length > 0) setCropPlotId(plotData[0].id);
+      if (plotData.length > 0) {
+        setCropPlotId(plotData[0].id);
+      } else {
+        setCropPlotId('');
+      }
 
-      const cropData = await fetchCrops();
+      const cropData = await fetchCrops(null, user?.id);
       setCrops(cropData);
     } catch (err) {
       console.error(err);
     }
   };
+
 
   const filteredPlotsForCrop = cropFarmId
     ? plots.filter(p => p.farm_id === cropFarmId)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -8,10 +8,19 @@ from app.models.schemas import PlotCreate, PlotResponse
 router = APIRouter(prefix="/plots", tags=["Plots"])
 
 @router.get("", response_model=List[PlotResponse])
-def get_plots(farm_id: Optional[str] = None, db: Session = Depends(get_db)):
+def get_plots(farm_id: Optional[str] = Query(None), user_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     query = db.query(Plot)
+    
+    if user_id:
+        user_farms = db.query(Farm).filter((Farm.user_id == user_id) | (Farm.user_id == None)).all()
+        user_farm_ids = [f.id for f in user_farms]
+        if not user_farm_ids:
+            return []
+        query = query.filter(Plot.farm_id.in_(user_farm_ids))
+        
     if farm_id:
         query = query.filter(Plot.farm_id == farm_id)
+        
     return query.all()
 
 @router.post("", response_model=PlotResponse, status_code=status.HTTP_201_CREATED)

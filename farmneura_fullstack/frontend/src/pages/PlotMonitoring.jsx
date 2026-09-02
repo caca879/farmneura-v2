@@ -113,7 +113,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   const loadPlots = async (fId) => {
     try {
-      const data = await fetchPlots(fId);
+      const data = await fetchPlots(fId, user?.id);
       setPlots(data);
       if (data.length > 0) {
         if (!data.some(p => p.id === activePlotId)) {
@@ -126,6 +126,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
       console.error(err);
     }
   };
+
 
   const loadTelemetryData = async (pId) => {
     try {
