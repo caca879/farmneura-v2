@@ -29,7 +29,8 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     Supports Google Gemini API, OpenAI (GPT-4o-mini), and Groq (Llama 3.3).
     Falls back gracefully to precision rule engine if keys are absent or services unreachable.
     """
-    gemini_key = (os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "") or "").strip().strip('"').strip("'")
+    gemini_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_APT_KEY") or getattr(settings, "GEMINI_API_KEY", "") or "").strip().strip('"').strip("'")
+
     openai_key = (os.environ.get("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "") or "").strip().strip('"').strip("'")
     groq_key = (os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_APT_KEY") or getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
 
