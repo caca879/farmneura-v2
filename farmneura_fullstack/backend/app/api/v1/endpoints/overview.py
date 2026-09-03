@@ -170,12 +170,20 @@ def test_llm_api():
 
     # Test Groq
     if groq_key:
-        try:
-            gr_url = "https://api.groq.com/openai/v1/chat/completions"
-            gr_res = requests.post(gr_url, headers={"Authorization": f"Bearer {groq_key}"}, json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Hello"}]}, timeout=5)
-            results["groq"] = {"status_code": gr_res.status_code, "key_preview": f"{groq_key[:6]}...{groq_key[-4:]}", "response": gr_res.json() if gr_res.status_code == 200 else gr_res.text[:200]}
-        except Exception as e:
-            results["groq"] = {"error": str(e)}
+        groq_tested = False
+        for g_cand in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound-mini", "llama-3.3-70b-versatile"]:
+            try:
+                gr_url = "https://api.groq.com/openai/v1/chat/completions"
+                gr_res = requests.post(gr_url, headers={"Authorization": f"Bearer {groq_key}"}, json={"model": g_cand, "messages": [{"role": "user", "content": "Hello"}]}, timeout=5)
+                if gr_res.status_code == 200:
+                    results["groq"] = {"model": g_cand, "status_code": gr_res.status_code, "key_preview": f"{groq_key[:6]}...{groq_key[-4:]}", "response": gr_res.json()}
+                    groq_tested = True
+                    break
+            except Exception as e:
+                results["groq"] = {"error": str(e)}
+                break
+        if not groq_tested and "groq" not in results:
+            results["groq"] = {"status_code": 404, "message": "No active candidate models succeeded"}
     else:
         results["groq"] = "No GROQ_API_KEY provided"
 
