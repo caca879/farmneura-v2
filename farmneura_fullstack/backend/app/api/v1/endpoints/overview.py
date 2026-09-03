@@ -141,3 +141,52 @@ def get_live_db_summary(db: Session = Depends(get_db)):
         db.rollback()
         return {"error": str(err), "status": "failed_db_query"}
 
+
+@router.get("/test-groq")
+def test_groq_api():
+    import os
+    import requests
+    from app.core.config import settings
+
+    key1 = os.environ.get("GROQ_API_KEY", "")
+    key2 = os.environ.get("GROQ_APT_KEY", "")
+    settings_key = getattr(settings, "GROQ_API_KEY", "")
+
+    raw_key = (key1 or key2 or settings_key or "").strip().strip('"').strip("'")
+    key_preview = f"{raw_key[:6]}...{raw_key[-4:]}" if len(raw_key) > 10 else "EMPTY_KEY"
+
+    if not raw_key:
+        return {
+            "status": "error",
+            "message": "No GROQ_API_KEY or GROQ_APT_KEY found in environment variables.",
+            "key_preview": key_preview
+        }
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {raw_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "user", "content": "Say hello in 3 words"}
+        ],
+        "max_tokens": 20
+    }
+
+    try:
+        res = requests.post(url, json=payload, timeout=10)
+        return {
+            "status_code": res.status_code,
+            "key_preview": key_preview,
+            "groq_response": res.json() if res.status_code == 200 else res.text
+        }
+    except Exception as e:
+        return {
+            "status": "exception",
+            "key_preview": key_preview,
+            "error": str(e)
+        }
+
+
