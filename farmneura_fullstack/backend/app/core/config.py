@@ -11,8 +11,11 @@ class Settings:
         "sqlite:///./farmneura_fullstack.db"
     )
     
-    # LLM & AI Settings
+    # LLM & AI Settings (Supports Gemini, Groq, and OpenAI)
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_APT_KEY", "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
 
     
     # Storage Paths

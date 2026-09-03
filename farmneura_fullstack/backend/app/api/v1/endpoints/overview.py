@@ -143,50 +143,52 @@ def get_live_db_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/test-groq")
-def test_groq_api():
+@router.get("/test-llm")
+def test_llm_api():
     import os
     import requests
     from app.core.config import settings
 
-    key1 = os.environ.get("GROQ_API_KEY", "")
-    key2 = os.environ.get("GROQ_APT_KEY", "")
-    settings_key = getattr(settings, "GROQ_API_KEY", "")
+    gemini_key = (os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "") or "").strip().strip('"').strip("'")
+    groq_key = (os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_APT_KEY") or getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
+    openai_key = (os.environ.get("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "") or "").strip().strip('"').strip("'")
 
-    raw_key = (key1 or key2 or settings_key or "").strip().strip('"').strip("'")
-    key_preview = f"{raw_key[:6]}...{raw_key[-4:]}" if len(raw_key) > 10 else "EMPTY_KEY"
+    results = {}
 
-    if not raw_key:
-        return {
-            "status": "error",
-            "message": "No GROQ_API_KEY or GROQ_APT_KEY found in environment variables.",
-            "key_preview": key_preview
-        }
+    # Test Gemini
+    if gemini_key:
+        try:
+            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            g_res = requests.post(g_url, json={"contents": [{"parts": [{"text": "Hello"}]}]}, timeout=5)
+            results["gemini"] = {"status_code": g_res.status_code, "key_preview": f"{gemini_key[:6]}...{gemini_key[-4:]}", "response": g_res.json() if g_res.status_code == 200 else g_res.text[:200]}
+        except Exception as e:
+            results["gemini"] = {"error": str(e)}
+    else:
+        results["gemini"] = "No GEMINI_API_KEY provided"
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {raw_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [
-            {"role": "user", "content": "Say hello in 3 words"}
-        ],
-        "max_tokens": 20
-    }
+    # Test Groq
+    if groq_key:
+        try:
+            gr_url = "https://api.groq.com/openai/v1/chat/completions"
+            gr_res = requests.post(gr_url, headers={"Authorization": f"Bearer {groq_key}"}, json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Hello"}]}, timeout=5)
+            results["groq"] = {"status_code": gr_res.status_code, "key_preview": f"{groq_key[:6]}...{groq_key[-4:]}", "response": gr_res.json() if gr_res.status_code == 200 else gr_res.text[:200]}
+        except Exception as e:
+            results["groq"] = {"error": str(e)}
+    else:
+        results["groq"] = "No GROQ_API_KEY provided"
 
-    try:
-        res = requests.post(url, json=payload, timeout=10)
-        return {
-            "status_code": res.status_code,
-            "key_preview": key_preview,
-            "groq_response": res.json() if res.status_code == 200 else res.text
-        }
-    except Exception as e:
-        return {
-            "status": "exception",
-            "key_preview": key_preview,
-            "error": str(e)
-        }
+    # Test OpenAI
+    if openai_key:
+        try:
+            o_url = "https://api.openai.com/v1/chat/completions"
+            o_res = requests.post(o_url, headers={"Authorization": f"Bearer {openai_key}"}, json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello"}]}, timeout=5)
+            results["openai"] = {"status_code": o_res.status_code, "key_preview": f"{openai_key[:6]}...{openai_key[-4:]}", "response": o_res.json() if o_res.status_code == 200 else o_res.text[:200]}
+        except Exception as e:
+            results["openai"] = {"error": str(e)}
+    else:
+        results["openai"] = "No OPENAI_API_KEY provided"
+
+    return results
+
 
 
