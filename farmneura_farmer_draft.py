@@ -96,11 +96,11 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://use.typekit.net/cjq2err.css');
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
     html, body, [class*="css"], .stMarkdown, p, h1, h2, h3, h4, span, div, button {
-        font-family: 'arboria', 'Plus Jakarta Sans', sans-serif !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        letter-spacing: -0.011em;
     }
 
     /* Custom App Header Card */
