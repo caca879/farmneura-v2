@@ -1,10 +1,10 @@
 export const translations = {
-  "🇲🇾 Bahasa Melayu": {
+  "Bahasa Melayu": {
     // Navigation
-    overviewTab: "📋 Gambaran Keseluruhan",
-    monitoringTab: "📷 Pemantauan Plot",
-    registryTab: "⚙️ Pendaftaran & Pengurusan",
-    authTab: "🔑 Log Masuk / Daftar",
+    overviewTab: "Gambaran Keseluruhan",
+    monitoringTab: "Pemantauan Plot",
+    registryTab: "Pendaftaran & Pengurusan",
+    authTab: "Log Masuk / Daftar",
 
     // Authentication Page
     loginTitle: "Log Masuk Akaun Petani",
@@ -27,15 +27,15 @@ export const translations = {
     landingTagline: "Sistem Pemantauan Pertanian Jitu Berkuasa AI",
     landingHeroTitle: "Urus Ladang & Diagnosis Kesihatan Tanaman Secara Pintar",
     landingHeroSubtitle: "Integrasi model visi YOLOv8 ONNX, analitik IoT awan masa nyata, dan LLM fusion untuk hasil pertanian maksimum.",
-    btnGetStarted: "🚀 Mula Sekarang (Percuma)",
-    btnLoginHero: "🔑 Log Masuk Akaun",
-    featureAiTitle: "🤖 Vision AI & Ripeness Detection",
+    btnGetStarted: "Mula Sekarang (Percuma)",
+    btnLoginHero: "Log Masuk Akaun",
+    featureAiTitle: "Vision AI & Ripeness Detection",
     featureAiDesc: "Algoritma YOLOv8 mengesan penyakit daun, kematangan bendi/tomato, dan bilangan kanopi dalam beberapa saat.",
-    featureIotTitle: "🌐 Telemetri IoT Awan Masa Nyata",
+    featureIotTitle: "Telemetri IoT Awan Masa Nyata",
     featureIotDesc: "Pantau kelembapan tanah, suhu udara, pH, dan EC secara automatik melalui penderia awan.",
-    featureManagementTitle: "📐 Pengurusan Plot & Bajet Kos",
+    featureManagementTitle: "Pengurusan Plot & Bajet Kos",
     featureManagementDesc: "Daftar sempadan plot, varieti tanaman, dan pantau garis masa kitaran tuai dengan teratur.",
-    featureQuickScanTitle: "⚡ Mod Imbas Cepat Instant",
+    featureQuickScanTitle: "Mod Imbas Cepat Instant",
     featureQuickScanDesc: "Lakukan pemeriksaan segera tanpa pendaftaran awal dan simpan ke log plot pilihan anda.",
     howItWorksTitle: "Bagaimana FarmNeura v2 Berfungsi",
     step1Title: "1. Tangkap Gambar Kanopi",
@@ -47,7 +47,7 @@ export const translations = {
     ctaBottomTitle: "Sedia untuk Meningkatkan Hasil Ladang Anda?",
     ctaBottomDesc: "Daftar akaun percuma hari ini dan nikmati pengurusan pertanian berasaskan kecerdasan buatan.",
 
-    // Overview Page
+    // Overview Page (Dashboard emojis preserved)
     greetingMorning: "Selamat Pagi, Petani",
     greetingAfternoon: "Selamat Tengah Hari, Petani",
     greetingEvening: "Selamat Petang, Petani",
@@ -70,58 +70,58 @@ export const translations = {
     btnInspect: "Periksa ➔",
 
     // Monitoring Page
-    targetFarmLabel: "🚜 LOKASI LADANG SASARAN",
-    targetPlotLabel: "📍 PLOT SASARAN",
+    targetFarmLabel: "LOKASI LADANG SASARAN",
+    targetPlotLabel: "PLOT SASARAN",
     targetCropLabel: "TANAMAN SASARAN",
 
     allCropsGeneral: "Semua Tanaman / Am Plot",
 
-    tabTakeRecord: "📷 Pemantauan Plot",
-    tabQuickScan: "⚡ Imbas Cepat (AI Segera)",
-    tabHistoryLog: "📊 Log Sejarah Plot",
+    tabTakeRecord: "Pemantauan Plot",
+    tabQuickScan: "Imbas Cepat (AI Segera)",
+    tabHistoryLog: "Log Sejarah Plot",
 
-    quickScanBanner: "⚡ Mod Imbas Cepat Segera: Ambil atau muat naik gambar tanaman secara bebas tanpa memilih plot terlebih dahulu. Anda boleh memilih untuk menyimpannya ke log plot selepas melihat diagnosis AI.",
-    quickScanSaveHeader: "💾 Simpan Pemeriksaan Imbas Cepat Ini ke Log Plot",
+    quickScanBanner: "Mod Imbas Cepat Segera: Ambil atau muat naik gambar tanaman secara bebas tanpa memilih plot terlebih dahulu. Anda boleh memilih untuk menyimpannya ke log plot selepas melihat diagnosis AI.",
+    quickScanSaveHeader: "Simpan Pemeriksaan Imbas Cepat Ini ke Log Plot",
     selectTargetFarmSave: "Pilih Ladang Sasaran",
     selectTargetPlotSave: "Pilih Plot Sasaran",
     selectTargetCropSave: "Pilih Tanaman Sasaran",
-    btnSaveQuickScan: "💾 Simpan Rekod ke Log Plot Terpilih",
+    btnSaveQuickScan: "Simpan Rekod ke Log Plot Terpilih",
 
-    iotStreamTitle: "🌐 Aliran Telemetri IoT Awan",
+    iotStreamTitle: "Aliran Telemetri IoT Awan",
     btnSyncIot: "Dapatkan Bacaan Penderia",
-    soilMoisture: "💧 Kelembapan Tanah",
-    airTemp: "🌡️ Suhu Udara",
-    soilEc: "🧪 EC Tanah",
-    soilPh: "🧪 pH Tanah",
+    soilMoisture: "Kelembapan Tanah",
+    airTemp: "Suhu Udara",
+    soilEc: "EC Tanah",
+    soilPh: "pH Tanah",
 
     captureTitle: "Pantau Kesihatan Tanaman",
     btnTakeLivePhoto: "Ambil Gambar Tanaman Dari Atas",
     btnChooseGallery: "Pilih Gambar Dari Galeri",
     photoSelected: "Gambar Dipilih:",
-    aiModelLabel: "🤖 Model Penglihatan AI",
-    systemLangLabel: "🌐 Bahasa Sistem & AI",
+    aiModelLabel: "Model Penglihatan AI",
+    systemLangLabel: "Bahasa Sistem & AI",
     btnDiagnose: "Diagnosis Kesihatan Tanaman & LLM Fusion",
     btnProcessing: "Memproses Bilangan Daun & LLM Fusion...",
 
-    totalLeaves: "🍃 Jumlah Daun Dikesan (Bil Daun)",
-    totalOkraPods: "🥒 Jumlah Buah Bendi Dikesan (Bil Buah)",
-    cropDiagnosisTitle: "🔍 Diagnosis Keadaan Tanaman",
-    interventionTitle: "💡 Cadangan Tindakan Agronomis",
-    fieldNotesLabel: "📝 Nota Lapangan / Pemerhatian (Pilihan)",
+    totalLeaves: "Jumlah Daun Dikesan (Bil Daun)",
+    totalOkraPods: "Jumlah Buah Bendi Dikesan (Bil Buah)",
+    cropDiagnosisTitle: "Diagnosis Keadaan Tanaman",
+    interventionTitle: "Cadangan Tindakan Agronomis",
+    fieldNotesLabel: "Nota Lapangan / Pemerhatian (Pilihan)",
     fieldNotesPlaceholder: "Masukkan butiran seperti kelembapan tanah, cuaca, atau pemerhatian pemeriksaan manual.",
-    btnSaveRecord: "💾 Simpan Rekod ke Log Plot",
+    btnSaveRecord: "Simpan Rekod ke Log Plot",
     annotatedDetectionsTitle: "Pengesanan AI Beranotasi (Bilangan Daun & Kotak Sempadan)",
     okraPodsDetectedLabel: "Jumlah Buah Bendi Dikesan:",
     fieldNotesHistoryLabel: "Nota Lapangan:",
     dayLabel: "Hari",
     closeLabel: "Tutup",
-    enlargeHint: "🔍 Paparan Resolusi Penuh • Klik di mana-mana untuk tutup",
+    enlargeHint: "Paparan Resolusi Penuh • Klik di mana-mana untuk tutup",
 
     // History Log
     historyLogHeader: "Rekod Pemantauan Plot",
     intervalTracking: "Selang Masa:",
     foliageExpansion: "Perluasan Kanopi Daun:",
-    baselinePhoto: "🌱 Gambar Asas: Pemeriksaan awal tanaman telah direkodkan untuk plot ini.",
+    baselinePhoto: "Gambar Asas: Pemeriksaan awal tanaman telah direkodkan untuk plot ini.",
     noHistory: "Tiada rekod pemantauan ditemui. Tangkap gambar pemeriksaan untuk mencipta rekod pertama anda.",
     leavesDetectedLabel: "Daun Dikesan:",
     diagnosisLabel: "Diagnosis:",
@@ -130,15 +130,15 @@ export const translations = {
     // Registry Page
     registryTitle: "Pendaftaran Ladang, Plot & Tanaman",
     registrySubtitle: "Daftar dan urus ladang jitu, sempadan plot, dan varieti tanaman anda.",
-    tabRegFarm: "🚜 Daftar Ladang",
-    tabRegPlot: "📐 Daftar Plot",
-    tabRegCrop: "🌿 Daftar Tanaman",
-    tabRegHarvest: "🌾 Rekod Tuaian & Anggaran RM",
+    tabRegFarm: "Daftar Ladang",
+    tabRegPlot: "Daftar Plot",
+    tabRegCrop: "Daftar Tanaman",
+    tabRegHarvest: "Rekod Tuaian & Anggaran RM",
 
     regFarmHeader: "Daftar Lokasi Ladang Baharu",
     regPlotHeader: "Daftar Plot Baharu dalam Ladang",
     regCropHeader: "Daftar Varieti Tanaman ke Plot",
-    regHarvestHeader: "🌾 Tambah Rekod Tuaian & Anggaran RM",
+    regHarvestHeader: "Tambah Rekod Tuaian & Anggaran RM",
 
     selectParentFarm: "Pilih Ladang Induk",
     selectTargetFarm: "Pilih Ladang Sasaran",
@@ -187,12 +187,12 @@ export const translations = {
     cardPricePerKg: "Harga/kg"
   },
 
-  "🇬🇧 English": {
+  "English": {
     // Navigation
-    overviewTab: "📋 Overview",
-    monitoringTab: "📷 Plot Monitoring",
-    registryTab: "⚙️ Registry & Management",
-    authTab: "🔑 Login / Sign Up",
+    overviewTab: "Overview",
+    monitoringTab: "Plot Monitoring",
+    registryTab: "Registry & Management",
+    authTab: "Login / Sign Up",
 
     // Authentication Page
     loginTitle: "Farmer Account Login",
@@ -215,15 +215,15 @@ export const translations = {
     landingTagline: "AI-Powered Precision Agriculture System",
     landingHeroTitle: "Manage Farms & Diagnose Crop Health Intelligently",
     landingHeroSubtitle: "Integration of YOLOv8 ONNX vision models, real-time cloud IoT analytics, and LLM fusion for maximum crop yield.",
-    btnGetStarted: "🚀 Get Started Free",
-    btnLoginHero: "🔑 Account Login",
-    featureAiTitle: "🤖 Vision AI & Ripeness Detection",
+    btnGetStarted: "Get Started Free",
+    btnLoginHero: "Account Login",
+    featureAiTitle: "Vision AI & Ripeness Detection",
     featureAiDesc: "YOLOv8 algorithms detect leaf diseases, okra/tomato ripeness, and foliage count in seconds.",
-    featureIotTitle: "🌐 Real-Time Cloud IoT Telemetry",
+    featureIotTitle: "Real-Time Cloud IoT Telemetry",
     featureIotDesc: "Monitor soil moisture, air temp, pH, and EC automatically via cloud telemetry.",
-    featureManagementTitle: "📐 Plot Management & Cost Budgeting",
+    featureManagementTitle: "Plot Management & Cost Budgeting",
     featureManagementDesc: "Register plot boundaries, crop varieties, and track harvest cycle timelines seamlessly.",
-    featureQuickScanTitle: "⚡ Instant Quick Scan Mode",
+    featureQuickScanTitle: "Instant Quick Scan Mode",
     featureQuickScanDesc: "Run instant inspections without setup and optionally save to your preferred plot log.",
     howItWorksTitle: "How FarmNeura v2 Works",
     step1Title: "1. Capture Canopy Photo",
@@ -235,7 +235,7 @@ export const translations = {
     ctaBottomTitle: "Ready to Maximize Your Farm Yield?",
     ctaBottomDesc: "Sign up for a free account today and experience AI-driven precision farming.",
 
-    // Overview Page
+    // Overview Page (Dashboard emojis preserved)
     greetingMorning: "Good Morning, Farmer",
     greetingAfternoon: "Good Afternoon, Farmer",
     greetingEvening: "Good Evening, Farmer",
@@ -258,58 +258,58 @@ export const translations = {
     btnInspect: "Inspect ➔",
 
     // Monitoring Page
-    targetFarmLabel: "🚜 TARGET FARM LOCATION",
-    targetPlotLabel: "📍 TARGET PLOT",
+    targetFarmLabel: "TARGET FARM LOCATION",
+    targetPlotLabel: "TARGET PLOT",
     targetCropLabel: "TARGET CROP",
 
     allCropsGeneral: "All Crops / General Plot",
 
-    tabTakeRecord: "📷 Plot Monitoring",
-    tabQuickScan: "⚡ Quick Scan (Instant AI)",
-    tabHistoryLog: "📊 Plot History Log",
+    tabTakeRecord: "Plot Monitoring",
+    tabQuickScan: "Quick Scan (Instant AI)",
+    tabHistoryLog: "Plot History Log",
 
-    quickScanBanner: "⚡ Instant Quick Scan Mode: Take or upload a plant photo freely without pre-selecting a plot. You can optionally save it to a plot log after viewing the AI diagnosis.",
-    quickScanSaveHeader: "💾 Save This Quick Scan Record to a Plot Log",
+    quickScanBanner: "Instant Quick Scan Mode: Take or upload a plant photo freely without pre-selecting a plot. You can optionally save it to a plot log after viewing the AI diagnosis.",
+    quickScanSaveHeader: "Save This Quick Scan Record to a Plot Log",
     selectTargetFarmSave: "Select Target Farm",
     selectTargetPlotSave: "Select Target Plot",
     selectTargetCropSave: "Select Target Crop",
-    btnSaveQuickScan: "💾 Save to Selected Plot Log",
+    btnSaveQuickScan: "Save to Selected Plot Log",
 
-    iotStreamTitle: "🌐 Cloud IoT Telemetry Stream",
+    iotStreamTitle: "Cloud IoT Telemetry Stream",
     btnSyncIot: "Fetch Sensor Readings",
-    soilMoisture: "💧 Soil Moisture",
-    airTemp: "🌡️ Air Temp",
-    soilEc: "🧪 Soil EC",
-    soilPh: "🧪 Soil pH",
+    soilMoisture: "Soil Moisture",
+    airTemp: "Air Temp",
+    soilEc: "Soil EC",
+    soilPh: "Soil pH",
 
     captureTitle: "Monitor Crop Health",
     btnTakeLivePhoto: "Take Crop Photo From Above",
     btnChooseGallery: "Choose Photo From Gallery",
     photoSelected: "Photo Selected:",
-    aiModelLabel: "🤖 AI Vision Model",
-    systemLangLabel: "🌐 System & AI Language",
+    aiModelLabel: "AI Vision Model",
+    systemLangLabel: "System & AI Language",
     btnDiagnose: "Diagnose Crop Health & Run LLM Fusion",
     btnProcessing: "Processing Leaf Count & LLM Fusion...",
 
-    totalLeaves: "🍃 Total Leaves Detected (Bil Daun)",
-    totalOkraPods: "🥒 Total Okra Pods Detected (Bil Buah)",
-    cropDiagnosisTitle: "🔍 Crop Condition Diagnosis",
-    interventionTitle: "💡 Recommended Intervention",
-    fieldNotesLabel: "📝 Field Notes / Observations (Optional)",
+    totalLeaves: "Total Leaves Detected (Bil Daun)",
+    totalOkraPods: "Total Okra Pods Detected (Bil Buah)",
+    cropDiagnosisTitle: "Crop Condition Diagnosis",
+    interventionTitle: "Recommended Intervention",
+    fieldNotesLabel: "Field Notes / Observations (Optional)",
     fieldNotesPlaceholder: "Add any details about soil dampness, weather, or manual inspection details.",
-    btnSaveRecord: "💾 Save Record to Plot Log",
+    btnSaveRecord: "Save Record to Plot Log",
     annotatedDetectionsTitle: "Annotated AI Detections (Leaf Count & Bounding Boxes)",
     okraPodsDetectedLabel: "Total Okra Pods Detected:",
     fieldNotesHistoryLabel: "Field Notes:",
     dayLabel: "Day",
     closeLabel: "Close",
-    enlargeHint: "🔍 Full Resolution View • Click anywhere to close",
+    enlargeHint: "Full Resolution View • Click anywhere to close",
 
     // History Log
     historyLogHeader: "Plot Inspection Records for",
     intervalTracking: "Interval Tracking:",
     foliageExpansion: "Foliage Expansion:",
-    baselinePhoto: "🌱 Baseline Photo: Initial crop inspection recorded for this plot.",
+    baselinePhoto: "Baseline Photo: Initial crop inspection recorded for this plot.",
     noHistory: "No inspection records found. Take an inspection photo to create your first record.",
     leavesDetectedLabel: "Leaves Detected:",
     diagnosisLabel: "Diagnosis:",
@@ -318,15 +318,15 @@ export const translations = {
     // Registry Page
     registryTitle: "Farm, Plot & Crop Registry",
     registrySubtitle: "Register and manage your precision farms, plot boundaries, and crop varieties.",
-    tabRegFarm: "🚜 Register Farm",
-    tabRegPlot: "📐 Register Plot",
-    tabRegCrop: "🌿 Register Crops",
-    tabRegHarvest: "🌾 Harvest Records & Revenue",
+    tabRegFarm: "Register Farm",
+    tabRegPlot: "Register Plot",
+    tabRegCrop: "Register Crops",
+    tabRegHarvest: "Harvest Records & Revenue",
 
     regFarmHeader: "Register a New Farm Location",
     regPlotHeader: "Register a New Plot inside a Farm",
     regCropHeader: "Register a Crop Variety to a Plot",
-    regHarvestHeader: "🌾 Add Harvest Record & Estimated Revenue",
+    regHarvestHeader: "Add Harvest Record & Estimated Revenue",
 
     selectParentFarm: "Select Parent Farm",
     selectTargetFarm: "Select Target Farm",
@@ -375,6 +375,9 @@ export const translations = {
     cardPricePerKg: "Price/kg"
   }
 };
+
+translations["🇲🇾 Bahasa Melayu"] = translations["Bahasa Melayu"];
+translations["🇬🇧 English"] = translations["English"];
 
 export function localizeDiagnosis(diagnosis, isEnglish) {
   if (!diagnosis || typeof diagnosis !== "string") return diagnosis || "";

@@ -16,7 +16,7 @@ export default function Auth({ onAuthSuccess, lang, initialTab = 'login' }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -219,8 +219,8 @@ export default function Auth({ onAuthSuccess, lang, initialTab = 'login' }) {
             className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline focus:outline-none"
           >
             {isLogin 
-              ? (lang.includes('Melayu') ? 'Belum ada akaun? Daftar di sini ➔' : 'No account yet? Register here ➔')
-              : (lang.includes('Melayu') ? 'Sudah ada akaun? Log masuk ➔' : 'Already have an account? Log in ➔')}
+              ? (lang.includes('Melayu') ? 'Belum ada akaun? Daftar di sini →' : 'No account yet? Register here →')
+              : (lang.includes('Melayu') ? 'Sudah ada akaun? Log masuk →' : 'Already have an account? Log in →')}
           </button>
         </div>
       </div>

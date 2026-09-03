@@ -7,7 +7,7 @@ export default function Overview({ onSelectAction, lang, user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
 
   useEffect(() => {
     loadSummary();

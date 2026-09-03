@@ -9,7 +9,7 @@ import { Trash2, MapPin, Building, Sprout, DollarSign } from 'lucide-react';
 import { translations } from '../utils/translations';
 
 export default function Registry({ lang, user }) {
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
 
   const [activeTab, setActiveTab] = useState('farm'); // 'farm' | 'plot' | 'crop' | 'harvest'
 
@@ -201,7 +201,7 @@ export default function Registry({ lang, user }) {
       setHarvestWeightKg('');
       setHarvestNotes('');
       loadData();
-      alert("✅ " + (lang.includes('Melayu') ? "Rekod tuaian berjaya disimpan!" : "Harvest record saved successfully!"));
+      alert(lang.includes('Melayu') ? "Rekod tuaian berjaya disimpan!" : "Harvest record saved successfully!");
     } catch (err) {
       alert("Error saving harvest: " + (err.response?.data?.detail || err.message));
     }
@@ -327,8 +327,8 @@ export default function Registry({ lang, user }) {
                         <span>{f.name}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1 flex items-center space-x-3">
-                        <span>📍 {f.location || 'N/A'}</span>
-                        <span>📐 {f.size_sq_ft} {t.cardSqFt}</span>
+                        <span>{f.location || 'N/A'}</span>
+                        <span>{f.size_sq_ft} {t.cardSqFt}</span>
                       </div>
                     </div>
                     <button
@@ -459,8 +459,8 @@ export default function Registry({ lang, user }) {
                           <span className="text-xs text-gray-400">({parentFarm?.name || 'Unknown Farm'})</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                          <div>📅 {t.cardCycleLabel}: {p.cycle_start_date} {t.cardTo} {p.cycle_end_date}</div>
-                          <div>💰 {t.cardBudgetLabel}: RM {p.cost_budget_myr} | 📐 {p.size_sq_ft} {t.cardSqFt}</div>
+                          <div>{t.cardCycleLabel}: {p.cycle_start_date} {t.cardTo} {p.cycle_end_date}</div>
+                          <div>{t.cardBudgetLabel}: RM {p.cost_budget_myr} | {p.size_sq_ft} {t.cardSqFt}</div>
                         </div>
                       </div>
                       <button
@@ -585,8 +585,8 @@ export default function Registry({ lang, user }) {
                           <span className="text-xs text-gray-500 font-normal">({c.variety || 'Standard'})</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                          <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
-                          <div>🌱 {t.cardPlantedLabel}: {c.planting_date} | ⏱️ {t.cardHarvestCycleLabel}: ~{c.harvest_target_days} {t.cardDays}</div>
+                          <div>Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
+                          <div>{t.cardPlantedLabel}: {c.planting_date} | {t.cardHarvestCycleLabel}: ~{c.harvest_target_days} {t.cardDays}</div>
                         </div>
                       </div>
                       <button
@@ -609,7 +609,7 @@ export default function Registry({ lang, user }) {
         <div className="space-y-6">
           <form onSubmit={handleCreateHarvest} className="bg-white border border-emerald-200 bg-emerald-50/20 rounded-2xl p-5 shadow-sm space-y-4">
             <h3 className="font-bold text-emerald-900 text-base flex items-center gap-2">
-              <span>🌾</span> {t.regHarvestHeader}
+              {t.regHarvestHeader}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -708,15 +708,15 @@ export default function Registry({ lang, user }) {
                     <div key={h.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
                       <div>
                         <div className="font-black text-gray-900 text-sm flex items-center space-x-2">
-                          <span>🌾 {h.yield_weight_kg} kg</span>
+                          <span>{h.yield_weight_kg} kg</span>
                           <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-full font-bold">
                             RM {h.total_revenue_myr.toFixed(2)}
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                          <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
-                          <div>📅 {t.harvestDateLabel}: {h.harvest_date} | 💵 {t.cardPricePerKg}: RM {h.price_per_kg_myr.toFixed(2)}</div>
-                          {h.notes && <div className="italic text-gray-600">📝 {h.notes}</div>}
+                          <div>Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
+                          <div>{t.harvestDateLabel}: {h.harvest_date} | {t.cardPricePerKg}: RM {h.price_per_kg_myr.toFixed(2)}</div>
+                          {h.notes && <div className="italic text-gray-600">{h.notes}</div>}
                         </div>
                       </div>
                       <button

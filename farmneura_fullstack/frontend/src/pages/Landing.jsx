@@ -3,7 +3,7 @@ import { Sprout, Bot, Wifi, LayoutGrid, Zap, ShieldCheck, UserPlus, LogIn } from
 import { translations } from '../utils/translations';
 
 export default function Landing({ onOpenAuth, lang }) {
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
 
   return (
     <div className="space-y-10 py-2">

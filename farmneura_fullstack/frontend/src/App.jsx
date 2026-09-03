@@ -7,7 +7,7 @@ import Registry from './pages/Registry';
 import Auth from './pages/Auth';
 
 export default function App() {
-  const [lang, setLang] = useState('🇲🇾 Bahasa Melayu');
+  const [lang, setLang] = useState('Bahasa Melayu');
   const [selectedFarmId, setSelectedFarmId] = useState('');
   const [selectedPlotId, setSelectedPlotId] = useState('');
   const [authInitialTab, setAuthInitialTab] = useState('login');
@@ -22,11 +22,11 @@ export default function App() {
     }
   });
 
-  // Default view: if user logged in -> '📋 Overview', else -> 'landing'
+  // Default view: if user logged in -> 'Overview', else -> 'landing'
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const savedUser = localStorage.getItem('farmneura_user');
-      return savedUser ? '📋 Overview' : 'landing';
+      return savedUser ? 'Overview' : 'landing';
     } catch {
       return 'landing';
     }
@@ -34,18 +34,18 @@ export default function App() {
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthInitialTab(mode);
-    setActiveTab('🔑 Auth');
+    setActiveTab('Auth');
   };
 
   const handleSelectAction = (farmId, plotId) => {
     setSelectedFarmId(farmId);
     setSelectedPlotId(plotId);
-    setActiveTab('📷 Plot Monitoring');
+    setActiveTab('Plot Monitoring');
   };
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
-    setActiveTab('📋 Overview');
+    setActiveTab('Overview');
   };
 
   const handleLogout = () => {
@@ -60,7 +60,7 @@ export default function App() {
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={(tabKey) => {
-          if (!user && tabKey !== 'landing' && tabKey !== '🔑 Auth') {
+          if (!user && tabKey !== 'landing' && tabKey !== 'Auth') {
             handleOpenAuth('login');
           } else {
             setActiveTab(tabKey);
@@ -82,7 +82,7 @@ export default function App() {
         )}
 
         {/* Authentication Page */}
-        {activeTab === '🔑 Auth' && (
+        {activeTab === 'Auth' && (
           <Auth 
             onAuthSuccess={handleAuthSuccess} 
             lang={lang} 
@@ -91,7 +91,7 @@ export default function App() {
         )}
 
         {/* Protected Authenticated Pages */}
-        {(user && activeTab === '📋 Overview') && (
+        {(user && activeTab === 'Overview') && (
           <Overview 
             onSelectAction={handleSelectAction} 
             lang={lang} 
@@ -99,7 +99,7 @@ export default function App() {
           />
         )}
 
-        {(user && activeTab === '📷 Plot Monitoring') && (
+        {(user && activeTab === 'Plot Monitoring') && (
           <PlotMonitoring 
             selectedFarmId={selectedFarmId}
             selectedPlotId={selectedPlotId}
@@ -113,7 +113,7 @@ export default function App() {
           />
         )}
 
-        {(user && activeTab === '⚙️ Registry & Management') && (
+        {(user && activeTab === 'Registry & Management') && (
           <Registry lang={lang} user={user} />
         )}
 

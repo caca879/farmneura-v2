@@ -101,7 +101,7 @@ class InspectionCreate(BaseModel):
     plot_id: str
     crop_id: Optional[str] = None
     model_preference: Optional[str] = "Auto-Detect"
-    language_choice: Optional[str] = "🇲🇾 Bahasa Melayu"
+    language_choice: Optional[str] = "Bahasa Melayu"
     field_notes: Optional[str] = None
 
 class InspectionResponse(BaseModel):

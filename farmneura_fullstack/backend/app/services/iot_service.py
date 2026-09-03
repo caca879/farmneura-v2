@@ -27,5 +27,5 @@ def fetch_cloud_iot_telemetry(plot_id: str):
         "soil_ec": ec,
         "soil_ph": ph,
         "air_humidity": humidity,
-        "server_status": "🟢 ONLINE (Connected to Cloud IoT Broker)"
+        "server_status": "ONLINE (Connected to Cloud IoT Broker)"
     }

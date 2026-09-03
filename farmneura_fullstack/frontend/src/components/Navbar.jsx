@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Sprout, Globe, Menu, X, User as UserIcon, LogOut, KeyRound } from 'lucide-react';
+import { Sprout, Globe, Menu, X, User as UserIcon, LogOut, KeyRound, Check } from 'lucide-react';
 import { translations } from '../utils/translations';
 
 export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
 
   const navItems = [
-    { key: '📋 Overview', label: t.overviewTab },
-    { key: '📷 Plot Monitoring', label: t.monitoringTab },
-    { key: '⚙️ Registry & Management', label: t.registryTab }
+    { key: 'Overview', label: t.overviewTab },
+    { key: 'Plot Monitoring', label: t.monitoringTab },
+    { key: 'Registry & Management', label: t.registryTab }
   ];
 
   return (
@@ -18,7 +18,7 @@ export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, o
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Brand Logo */}
         <div 
-          onClick={() => setActiveTab(user ? '📋 Overview' : 'landing')}
+          onClick={() => setActiveTab(user ? 'Overview' : 'landing')}
           className="flex items-center space-x-2 cursor-pointer group"
         >
           <Sprout className="w-7 h-7 text-green-300 flex-shrink-0 group-hover:scale-110 transition" />
@@ -57,8 +57,8 @@ export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, o
               onChange={(e) => setLang(e.target.value)}
               className="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer"
             >
-              <option value="🇲🇾 Bahasa Melayu" className="text-gray-900">🇲🇾 Melayu</option>
-              <option value="🇬🇧 English" className="text-gray-900">🇬🇧 English</option>
+              <option value="Bahasa Melayu" className="text-gray-900">Melayu</option>
+              <option value="English" className="text-gray-900">English</option>
             </select>
           </div>
 
@@ -80,9 +80,9 @@ export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, o
             </div>
           ) : (
             <button
-              onClick={() => setActiveTab('🔑 Auth')}
+              onClick={() => setActiveTab('Auth')}
               className={`px-3.5 py-1.5 rounded-xl text-xs md:text-sm font-extrabold transition flex items-center space-x-1.5 shadow-md ${
-                activeTab === '🔑 Auth'
+                activeTab === 'Auth'
                   ? 'bg-white text-farmGreen-800 shadow-lg'
                   : 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
               }`}
@@ -103,15 +103,15 @@ export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, o
               onChange={(e) => setLang(e.target.value)}
               className="bg-transparent text-[11px] font-bold text-white focus:outline-none cursor-pointer"
             >
-              <option value="🇲🇾 Bahasa Melayu" className="text-gray-900">🇲🇾 MY</option>
-              <option value="🇬🇧 English" className="text-gray-900">🇬🇧 EN</option>
+              <option value="Bahasa Melayu" className="text-gray-900">MY</option>
+              <option value="English" className="text-gray-900">EN</option>
             </select>
           </div>
 
           {/* Mobile Auth Button (When Not Logged In) */}
           {!user && (
             <button
-              onClick={() => setActiveTab('🔑 Auth')}
+              onClick={() => setActiveTab('Auth')}
               className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-extrabold border border-white/30 transition flex items-center space-x-1"
             >
               <KeyRound className="w-3.5 h-3.5" />
@@ -153,7 +153,7 @@ export default function Navbar({ activeTab, setActiveTab, lang, setLang, user, o
               }`}
             >
               <span>{item.label}</span>
-              {activeTab === item.key && <span className="text-farmGreen-700 font-extrabold text-sm">✓</span>}
+              {activeTab === item.key && <Check className="w-4 h-4 text-farmGreen-700" />}
             </button>
           ))}
 

@@ -17,37 +17,37 @@ router = APIRouter(prefix="/inspections", tags=["Inspections"])
 
 MYT = timezone(timedelta(hours=8))
 
-def get_crop_stage_badge(elapsed_days: int, language_choice: str = "🇲🇾 Bahasa Melayu"):
+def get_crop_stage_badge(elapsed_days: int, language_choice: str = "Bahasa Melayu"):
     is_english = "english" in (language_choice or "").lower()
     if is_english:
         if elapsed_days <= 14:
-            return "🌱 Seedling / Early Emergence Stage"
+            return "Seedling / Early Emergence Stage"
         elif elapsed_days <= 35:
-            return "🌿 Vegetative Canopy Expansion Stage"
+            return "Vegetative Canopy Expansion Stage"
         elif elapsed_days <= 49:
-            return "🌼 Flowering & Fruit Set Stage"
+            return "Flowering & Fruit Set Stage"
         elif elapsed_days <= 55:
-            return "🧺 Active Harvest Window"
+            return "Active Harvest Window"
         else:
-            return "🍂 Late Harvest / Maturation Stage"
+            return "Late Harvest / Maturation Stage"
     else:
         if elapsed_days <= 14:
-            return "🌱 Peringkat Anak Benih / Percambahan Awal"
+            return "Peringkat Anak Benih / Percambahan Awal"
         elif elapsed_days <= 35:
-            return "🌿 Peringkat Perluasan Kanopi Vegetatif"
+            return "Peringkat Perluasan Kanopi Vegetatif"
         elif elapsed_days <= 49:
-            return "🌼 Peringkat Berbunga & Pembentukan Buah"
+            return "Peringkat Berbunga & Pembentukan Buah"
         elif elapsed_days <= 55:
-            return "🧺 Tempoh Menuai Aktif"
+            return "Tempoh Menuai Aktif"
         else:
-            return "🍂 Peringkat Tuaian Akhir / Kematangan"
+            return "Peringkat Tuaian Akhir / Kematangan"
 
 @router.post("/diagnose", response_model=InspectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_inspection(
     plot_id: Optional[str] = Form(None),
     crop_id: Optional[str] = Form(None),
     model_preference: str = Form("Auto-Detect"),
-    language_choice: str = Form("🇲🇾 Bahasa Melayu"),
+    language_choice: str = Form("Bahasa Melayu"),
     field_notes: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
@@ -95,7 +95,7 @@ async def create_inspection(
     now_dt = datetime.now(MYT)
     cycle_day = 0
     is_en = "english" in (language_choice or "").lower()
-    stage_name = "🌱 Quick Scan / Diagnostic Mode" if is_en else "🌱 Imbas Cepat / Mod Diagnostik"
+    stage_name = "Quick Scan / Diagnostic Mode" if is_en else "Imbas Cepat / Mod Diagnostik"
     if plot:
         try:
             start_dt = datetime.strptime(plot.cycle_start_date, "%Y-%m-%d").date()
@@ -129,7 +129,7 @@ def save_quick_scan_record(req: QuickScanSaveRequest, db: Session = Depends(get_
         
     now_dt = datetime.now(MYT)
     cycle_day = 0
-    stage_name = "🌱 Seedling / Early Emergence Stage"
+    stage_name = "Seedling / Early Emergence Stage"
     try:
         start_dt = datetime.strptime(plot.cycle_start_date, "%Y-%m-%d").date()
         elapsed = (now_dt.date() - start_dt).days

@@ -80,7 +80,7 @@ class IoTTelemetryLog(Base):
     soil_ph = Column(Float, nullable=False)       # pH
     air_temp = Column(Float, nullable=False)      # °C
     air_humidity = Column(Float, default=75.0)   # %
-    server_status = Column(String(50), default="🟢 ONLINE (Connected to Cloud IoT Broker)")
+    server_status = Column(String(50), default="ONLINE (Connected to Cloud IoT Broker)")
     recorded_at = Column(DateTime, default=get_myt_now)
 
     plot = relationship("Plot", back_populates="telemetry_logs")

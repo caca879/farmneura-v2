@@ -15,9 +15,9 @@ const renderFormattedText = (text) => {
 };
 
 export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelectFarmPlot, lang, setLang, user }) {
-  const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const t = translations[lang] || translations["Bahasa Melayu"];
   const isEnglish = Boolean(lang?.includes('English'));
-  const languageChoice = isEnglish ? '🇬🇧 English' : '🇲🇾 Bahasa Melayu';
+  const languageChoice = isEnglish ? 'English' : 'Bahasa Melayu';
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -257,7 +257,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
         field_notes: fieldNotes || null,
       });
 
-      alert("✅ Quick Scan record successfully saved to Plot History Log!");
+      alert("Quick Scan record successfully saved to Plot History Log!");
       setActiveFarmId(saveFarmId);
       setActivePlotId(savePlotId);
       loadHistoryData(savePlotId);
@@ -284,7 +284,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
         field_notes: fieldNotes || null,
       });
 
-      alert("✅ Record successfully saved to Plot History Log!");
+      alert("Record successfully saved to Plot History Log!");
       loadHistoryData(activePlotId);
       setActiveTab('history');
     } catch (err) {
@@ -526,7 +526,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
             {selectedFile && (
               <div className="text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 flex items-center space-x-1">
-                <span>📎 {t.photoSelected}</span>
+                <span>{t.photoSelected}</span>
                 <span className="font-bold text-gray-900 truncate">{selectedFile.name}</span>
               </div>
             )}
@@ -783,7 +783,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
                     {rec.interval_tracking && (
                       <div className="bg-green-50 border-l-4 border-green-500 p-2.5 rounded text-xs text-green-800 font-medium">
-                        ⏱️ {rec.interval_tracking}
+                        {rec.interval_tracking}
                       </div>
                     )}
 
@@ -801,9 +801,9 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                       <div className="space-y-1 text-xs">
                         <div className="font-semibold text-gray-900">
                           {rec.diagnosis?.toLowerCase().includes('okra pod') || rec.diagnosis?.toLowerCase().includes('buah bendi') || rec.diagnosis?.toLowerCase().includes('pod') ? (
-                            <span>🥒 {t.okraPodsDetectedLabel} {rec.leaf_count}</span>
+                            <span>{t.okraPodsDetectedLabel} {rec.leaf_count}</span>
                           ) : (
-                            <span>🍃 {t.leavesDetectedLabel} {rec.leaf_count}</span>
+                            <span>{t.leavesDetectedLabel} {rec.leaf_count}</span>
                           )}
                         </div>
                         <div className="text-gray-700"><strong>{t.diagnosisLabel}</strong> {renderFormattedText(localizeDiagnosis(rec.diagnosis, isEnglish))}</div>
@@ -813,7 +813,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                         </div>
                         {rec.field_notes && (
                           <div className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200 mt-1">
-                            📝 <strong>{t.fieldNotesHistoryLabel}</strong> {rec.field_notes}
+                            <strong>{t.fieldNotesHistoryLabel}</strong> {rec.field_notes}
                           </div>
                         )}
                       </div>
@@ -838,7 +838,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               onClick={() => setModalImage(null)}
               className="absolute -top-10 right-0 bg-white/20 hover:bg-white/40 text-white rounded-full px-3 py-1 text-xs font-bold shadow transition"
             >
-              ✕ {t.closeLabel}
+              {t.closeLabel}
             </button>
             <img 
               src={modalImage} 

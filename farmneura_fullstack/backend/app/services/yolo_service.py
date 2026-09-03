@@ -79,7 +79,7 @@ def simple_numpy_nms(boxes, scores, iou_threshold=0.45):
     return keep
 
 
-def run_yolo_inference(image_file, model_preference="Auto-Detect", language_choice="🇲🇾 Bahasa Melayu"):
+def run_yolo_inference(image_file, model_preference="Auto-Detect", language_choice="Bahasa Melayu"):
     """
     Runs YOLOv8 ONNX inference on image input.
     Returns (leaf_count, diagnosis_string, annotated_pil_image).

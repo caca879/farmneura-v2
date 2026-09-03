@@ -84,7 +84,7 @@ def _clean_llm_response(text: str, language_choice: str) -> str:
 
     return "\n".join(cleaned_lines[:4]).strip()
 
-def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "🇲🇾 Bahasa Melayu") -> str:
+def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "Bahasa Melayu") -> str:
     d_lower = diagnosis.lower() if diagnosis else ""
     m_val = iot_telemetry.get('soil_moisture', 50.0) if iot_telemetry else 50.0
     ec_val = iot_telemetry.get('soil_ec', 1.8) if iot_telemetry else 1.8
@@ -106,7 +106,7 @@ def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language
             return f"- **Precision Agronomic Diagnosis (Vision + Sensor)**: Canopy condition and Cloud IoT telemetry are optimal (Moisture: {m_val}%, EC: {ec_val} mS/cm).\n- Maintain regular fertigation and inspection schedule."
 
 
-def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "🇲🇾 Bahasa Melayu") -> str:
+def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "Bahasa Melayu") -> str:
     """
     Multimodal AI Agronomist Generator.
     Supports Google Gemini API, OpenAI (GPT-4o-mini), and Groq (Llama 3.3).
