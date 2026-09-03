@@ -29,8 +29,9 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     with Cloud IoT Sensor Telemetry to generate a holistic agronomist intervention plan.
     Falls back to smart agronomic rule engine if key is absent or Groq is unreachable.
     """
-    api_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
+    api_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "") or os.environ.get("GROQ_APT_KEY", "")
     api_key = api_key.strip().strip('"').strip("'") if api_key else ""
+
     
     if not api_key:
         print("[LLM Service] No GROQ_API_KEY provided in environment. Using fallback engine.")

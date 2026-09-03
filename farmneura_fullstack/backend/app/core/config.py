@@ -12,7 +12,8 @@ class Settings:
     )
     
     # LLM & AI Settings
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_APT_KEY", "")
+
     
     # Storage Paths
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
