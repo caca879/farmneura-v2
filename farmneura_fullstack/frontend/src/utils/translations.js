@@ -167,7 +167,17 @@ export const translations = {
     harvestNotesLabel: "Nota Tuaian (Pilihan)",
     btnSaveHarvest: "Simpan Rekod Tuaian",
     harvestListTitle: "Senarai Log Tuaian",
-    noHarvestsMsg: "Tiada rekod tuaian ditemui. Gunakan borang di atas untuk memasukkan hasil tuaian pertama anda."
+    noHarvestsMsg: "Tiada rekod tuaian ditemui. Gunakan borang di atas untuk memasukkan hasil tuaian pertama anda.",
+
+    // Card Details Translations
+    cardSqFt: "kaki persegi",
+    cardCycleLabel: "Kitaran",
+    cardTo: "hingga",
+    cardBudgetLabel: "Bajet Kos",
+    cardPlantedLabel: "Ditanam pada",
+    cardHarvestCycleLabel: "Kitaran Tuai",
+    cardDays: "hari",
+    cardPricePerKg: "Harga/kg"
   },
 
   "🇬🇧 English": {
@@ -338,6 +348,16 @@ export const translations = {
     harvestNotesLabel: "Harvest Notes (Optional)",
     btnSaveHarvest: "Save Harvest Record",
     harvestListTitle: "Harvest Log Records",
-    noHarvestsMsg: "No harvest records found. Use the form above to add your first harvest yield."
+    noHarvestsMsg: "No harvest records found. Use the form above to add your first harvest yield.",
+
+    // Card Details Translations
+    cardSqFt: "sq ft",
+    cardCycleLabel: "Cycle",
+    cardTo: "to",
+    cardBudgetLabel: "Budget",
+    cardPlantedLabel: "Planted",
+    cardHarvestCycleLabel: "Harvest Cycle",
+    cardDays: "days",
+    cardPricePerKg: "Price/kg"
   }
 };

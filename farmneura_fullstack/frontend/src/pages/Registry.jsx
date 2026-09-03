@@ -328,7 +328,7 @@ export default function Registry({ lang, user }) {
                       </div>
                       <div className="text-xs text-gray-500 mt-1 flex items-center space-x-3">
                         <span>📍 {f.location || 'N/A'}</span>
-                        <span>📐 {f.size_sq_ft} sq ft</span>
+                        <span>📐 {f.size_sq_ft} {t.cardSqFt}</span>
                       </div>
                     </div>
                     <button
@@ -459,8 +459,8 @@ export default function Registry({ lang, user }) {
                           <span className="text-xs text-gray-400">({parentFarm?.name || 'Unknown Farm'})</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                          <div>📅 Cycle: {p.cycle_start_date} to {p.cycle_end_date}</div>
-                          <div>💰 Budget: MYR {p.cost_budget_myr} | 📐 {p.size_sq_ft} sq ft</div>
+                          <div>📅 {t.cardCycleLabel}: {p.cycle_start_date} {t.cardTo} {p.cycle_end_date}</div>
+                          <div>💰 {t.cardBudgetLabel}: RM {p.cost_budget_myr} | 📐 {p.size_sq_ft} {t.cardSqFt}</div>
                         </div>
                       </div>
                       <button
@@ -586,7 +586,7 @@ export default function Registry({ lang, user }) {
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                           <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
-                          <div>🌱 Planted: {c.planting_date} | ⏱️ Harvest Cycle: ~{c.harvest_target_days} days</div>
+                          <div>🌱 {t.cardPlantedLabel}: {c.planting_date} | ⏱️ {t.cardHarvestCycleLabel}: ~{c.harvest_target_days} {t.cardDays}</div>
                         </div>
                       </div>
                       <button
@@ -715,7 +715,7 @@ export default function Registry({ lang, user }) {
                         </div>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                           <div>📍 Plot: <strong>{parentPlot?.name || 'N/A'}</strong> ({parentFarm?.name || 'N/A'})</div>
-                          <div>📅 {t.harvestDateLabel}: {h.harvest_date} | 💵 {t.harvestPriceLabel}: RM {h.price_per_kg_myr.toFixed(2)}</div>
+                          <div>📅 {t.harvestDateLabel}: {h.harvest_date} | 💵 {t.cardPricePerKg}: RM {h.price_per_kg_myr.toFixed(2)}</div>
                           {h.notes && <div className="italic text-gray-600">📝 {h.notes}</div>}
                         </div>
                       </div>
