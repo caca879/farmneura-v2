@@ -67,7 +67,8 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     # PROVIDER 1: GOOGLE GEMINI API (RECOMMENDED - FAST & FREE TIER)
     # -------------------------------------------------------------
     if gemini_key:
-        gemini_models = ["gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro-latest", "gemini-2.0-flash-lite", "gemini-pro"]
+        configured_model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash").strip()
+        gemini_models = [configured_model] if configured_model else ["gemini-2.5-flash"]
         for g_model in gemini_models:
 
             try:

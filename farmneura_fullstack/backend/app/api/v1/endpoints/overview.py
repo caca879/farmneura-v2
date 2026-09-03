@@ -158,10 +158,11 @@ def test_llm_api():
     # Test Gemini
     if gemini_key:
         try:
-            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={gemini_key}"
+            gemini_model = os.environ.get("GEMINI_MODEL") or getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
 
             g_res = requests.post(g_url, json={"contents": [{"parts": [{"text": "Hello"}]}]}, timeout=5)
-            results["gemini"] = {"status_code": g_res.status_code, "key_preview": f"{gemini_key[:6]}...{gemini_key[-4:]}", "response": g_res.json() if g_res.status_code == 200 else g_res.text[:200]}
+            results["gemini"] = {"model": gemini_model, "status_code": g_res.status_code, "key_preview": f"{gemini_key[:6]}...{gemini_key[-4:]}", "response": g_res.json() if g_res.status_code == 200 else g_res.text[:200]}
         except Exception as e:
             results["gemini"] = {"error": str(e)}
     else:
