@@ -2,13 +2,6 @@ import os
 import requests
 from app.core.config import settings
 
-try:
-    from groq import Groq
-    HAS_GROQ_SDK = True
-except ImportError:
-    HAS_GROQ_SDK = False
-
-
 def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "🇲🇾 Bahasa Melayu") -> str:
     d_lower = diagnosis.lower() if diagnosis else ""
     m_val = iot_telemetry.get('soil_moisture', 50.0) if iot_telemetry else 50.0
@@ -40,6 +33,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     api_key = api_key.strip().strip('"').strip("'") if api_key else ""
     
     if not api_key:
+        print("[LLM Service] No GROQ_API_KEY provided in environment. Using fallback engine.")
         return _get_agronomic_fallback(diagnosis, iot_telemetry, language_choice)
 
     # Format IoT Telemetry for LLM Prompt Fusion
@@ -80,23 +74,6 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     
     for model_name in model_candidates:
         try:
-            if HAS_GROQ_SDK:
-                client = Groq(api_key=api_key)
-                chat_completion = client.chat.completions.create(
-                    model=model_name,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_query}
-                    ],
-                    temperature=0.2,
-                    max_tokens=350
-                )
-                if chat_completion.choices and len(chat_completion.choices) > 0:
-                    content = chat_completion.choices[0].message.content
-                    if content and content.strip():
-                        return content.strip()
-            
-            # Direct HTTP REST API fallback
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key}",
@@ -112,17 +89,20 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                 "max_tokens": 350
             }
             
-            response = requests.post(url, json=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=8)
             if response.status_code == 200:
                 res_json = response.json()
                 choices = res_json.get("choices", [])
                 if choices:
                     content = choices[0].get("message", {}).get("content", "")
                     if content and content.strip():
+                        print(f"[LLM Service] Successfully generated response using Groq model: {model_name}")
                         return content.strip()
+            else:
+                print(f"[LLM Service] Groq API HTTP {response.status_code} for {model_name}: {response.text}")
         except Exception as e:
-            print(f"Groq API error with model {model_name}: {e}")
+            print(f"[LLM Service] Groq API connection error with {model_name}: {e}")
             continue
 
-    # If Groq call failed (e.g. invalid key format or quota exceeded), fall back safely to Agronomic engine
+    print("[LLM Service] All Groq model candidates failed or unauthorized. Using agronomic fallback engine.")
     return _get_agronomic_fallback(diagnosis, iot_telemetry, language_choice)
