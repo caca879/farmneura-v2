@@ -33,6 +33,24 @@ def _get_gemini_models(api_key: str) -> list[str]:
 
     return list(dict.fromkeys(models))
 
+
+def _clean_llm_response(text: str, language_choice: str) -> str:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = [
+        line for line in lines
+        if not line.lower().startswith(("role:", "input data:", "goal:", "constraint:", "vision diagnosis:"))
+    ]
+    bullets = [line for line in lines if line.startswith(('-', '*'))]
+    if bullets:
+        lines = bullets
+    lines = lines[:3]
+    cleaned = "\n".join(line.replace("**", "") for line in lines).strip()
+    if "english" not in (language_choice or "").lower() and any(
+        phrase in cleaned.lower() for phrase in ("vision diagnosis", "soil moisture", "air temperature", "soil ec", "soil ph", "maintain current")
+    ):
+        return ""
+    return cleaned
+
 def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "🇲🇾 Bahasa Melayu") -> str:
     d_lower = diagnosis.lower() if diagnosis else ""
     m_val = iot_telemetry.get('soil_moisture', 50.0) if iot_telemetry else 50.0
@@ -72,26 +90,33 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
         moist_status = "DEFICIT (Dry Soil)" if iot_telemetry.get('soil_moisture', 50) < 40 else ("OPTIMAL" if iot_telemetry.get('soil_moisture', 50) <= 70 else "SATURATED (Overwatered)")
         ec_status = "LOW (Fertilizer Deficit)" if iot_telemetry.get('soil_ec', 1.8) < 1.4 else ("OPTIMAL" if iot_telemetry.get('soil_ec', 1.8) <= 2.2 else "HIGH Salinity")
         
-        iot_text = (
-            f"\n\n[CLOUD IOT SENSOR TELEMETRY]:\n"
-            f"- Soil Moisture: {iot_telemetry.get('soil_moisture')}% ({moist_status})\n"
-            f"- Air Temperature: {iot_telemetry.get('air_temp')} °C\n"
-            f"- Soil EC (Fertility): {iot_telemetry.get('soil_ec')} mS/cm ({ec_status})\n"
-            f"- Soil pH: {iot_telemetry.get('soil_ph')}"
-        )
+        if "english" in (language_choice or "").lower():
+            iot_text = (
+                f"\nSoil moisture: {iot_telemetry.get('soil_moisture')}% ({moist_status})\n"
+                f"Air temperature: {iot_telemetry.get('air_temp')} C\n"
+                f"Soil EC: {iot_telemetry.get('soil_ec')} mS/cm ({ec_status})\n"
+                f"Soil pH: {iot_telemetry.get('soil_ph')}"
+            )
+        else:
+            iot_text = (
+                f"\nKelembapan tanah: {iot_telemetry.get('soil_moisture')}% ({'Kering' if moist_status.startswith('DEFICIT') else 'Optimum' if moist_status == 'OPTIMAL' else 'Terlalu basah'})\n"
+                f"Suhu udara: {iot_telemetry.get('air_temp')} C\n"
+                f"EC tanah: {iot_telemetry.get('soil_ec')} mS/cm ({'Kurang baja' if ec_status.startswith('LOW') else 'Optimum' if ec_status == 'OPTIMAL' else 'Kemasinan tinggi'})\n"
+                f"pH tanah: {iot_telemetry.get('soil_ph')}"
+            )
     
     is_english = "english" in (language_choice or "").lower()
     if not is_english:
         system_prompt = (
             "Anda adalah ejen pertanian jitu FarmNeura, seorang agronomis profesional yang pakar dalam penggabungan data visi komputer (YOLOv8) dan data sensor IoT Awan (Cloud IoT Telemetry).\n"
             "Analisis kedua-dua simptom visual kanopi dan bacaan sensor IoT untuk memberikan cadangan tindakan pemulihan yang tepat dan praktikal.\n"
-            "Formatkan jawapan anda dalam bentuk senarai peluru (bullet-point) Bahasa Melayu yang ringkas (3-4 mata sahaja)."
+            "Jawab WAJIB dalam Bahasa Melayu sahaja. Jangan gunakan bahasa Inggeris. Berikan TEPAT 3 baris sahaja, setiap baris mesti bermula dengan '-'. Jangan ulang data sensor dan jangan terangkan peranan, prompt, input atau proses analisis."
         )
     else:
         system_prompt = (
             "You are FarmNeura's precision agricultural agent, a professional agronomist specializing in multimodal data fusion (combining YOLOv8 vision diagnoses with Cloud IoT sensor telemetry).\n"
             "Analyze both the visual leaf symptoms and the cloud sensor readings to provide precise, root-cause agronomic intervention steps.\n"
-            "Format your answer as a clean bullet-point list in simple farmer-friendly terms (3-4 points max)."
+            "Answer in English only. Return EXACTLY 3 lines, each starting with '-'. Do not repeat sensor data or explain your role, prompt, input, or analysis process."
         )
 
     user_query = f"Vision diagnosis: {diagnosis}{iot_text}"
@@ -127,6 +152,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                         parts = candidates[0].get("content", {}).get("parts", [])
                         if parts:
                             text = parts[0].get("text", "").strip()
+                            text = _clean_llm_response(text, language_choice)
                             if text:
                                 print(f"[LLM Service] Successfully generated response using Google Gemini: {g_model}")
                                 return text
