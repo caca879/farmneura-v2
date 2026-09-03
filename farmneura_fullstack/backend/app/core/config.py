@@ -14,7 +14,7 @@ class Settings:
     # LLM & AI Settings (Supports Gemini, Groq, and OpenAI)
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_APT_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
 

@@ -2,6 +2,37 @@ import os
 import requests
 from app.core.config import settings
 
+
+def _get_gemini_models(api_key: str) -> list[str]:
+    configured_model = getattr(settings, "GEMINI_MODEL", "").strip()
+    models = [configured_model] if configured_model else []
+
+    try:
+        response = requests.get(
+            f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+            timeout=8,
+        )
+        if response.status_code == 200:
+            available_models = response.json().get("models", [])
+            discovered_models = [
+                model.get("name", "").removeprefix("models/")
+                for model in available_models
+                if "generateContent" in model.get("supportedGenerationMethods", [])
+            ]
+            preferred_models = [
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+                "gemini-1.5-flash",
+            ]
+            models.extend(model for model in preferred_models if model in discovered_models)
+            models.extend(model for model in discovered_models if model not in models)
+        else:
+            print(f"[LLM Service] Gemini model discovery HTTP {response.status_code}: {response.text[:150]}")
+    except requests.RequestException as error:
+        print(f"[LLM Service] Gemini model discovery error: {error}")
+
+    return list(dict.fromkeys(models))
+
 def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language_choice: str = "🇲🇾 Bahasa Melayu") -> str:
     d_lower = diagnosis.lower() if diagnosis else ""
     m_val = iot_telemetry.get('soil_moisture', 50.0) if iot_telemetry else 50.0
@@ -67,8 +98,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
     # PROVIDER 1: GOOGLE GEMINI API (RECOMMENDED - FAST & FREE TIER)
     # -------------------------------------------------------------
     if gemini_key:
-        configured_model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash").strip()
-        gemini_models = [configured_model] if configured_model else ["gemini-2.5-flash"]
+        gemini_models = _get_gemini_models(gemini_key)
         for g_model in gemini_models:
 
             try:
