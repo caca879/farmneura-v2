@@ -98,9 +98,10 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                     content = choices[0].get("message", {}).get("content", "")
                     if content and content.strip():
                         print(f"[LLM Service] Successfully generated response using Groq model: {model_name}")
-                        return content.strip()
+                        return f"🤖 **[Groq AI - {model_name}]**\n\n{content.strip()}"
             else:
                 print(f"[LLM Service] Groq API HTTP {response.status_code} for {model_name}: {response.text}")
+
         except Exception as e:
             print(f"[LLM Service] Groq API connection error with {model_name}: {e}")
             continue
