@@ -159,12 +159,60 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
         user_query = f"Crop Diagnosis: {diagnosis}{iot_text}\n\nProvide 3 immediate agronomic actions:"
 
     # -------------------------------------------------------------
-    # PROVIDER 1: GOOGLE GEMINI API (RECOMMENDED - FAST & FREE TIER)
+    # PROVIDER 1: GROQ API (ULTRA-FAST LPU INFERENCE - PRIMARY)
+    # -------------------------------------------------------------
+    if groq_key:
+        configured_groq = getattr(settings, "GROQ_MODEL", "").strip()
+        candidates = [configured_groq] if configured_groq else []
+        candidates.extend([
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "llama-3.3-70b-versatile",
+            "groq/compound-mini",
+            "groq/compound",
+            "llama-3.1-8b-instant"
+        ])
+        model_candidates = list(dict.fromkeys([m for m in candidates if m]))
+
+        for model_name in model_candidates:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_query}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 400
+                }
+                
+                response = requests.post(url, json=payload, timeout=6)
+                if response.status_code == 200:
+                    res_json = response.json()
+                    choices = res_json.get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "")
+                        clean_content = _clean_llm_response(content.strip(), language_choice)
+                        if clean_content:
+                            print(f"[LLM Service] Successfully generated response using Groq model: {model_name}")
+                            return clean_content
+                else:
+                    print(f"[LLM Service] Groq API HTTP {response.status_code} for {model_name}: {response.text[:150]}")
+            except Exception as e:
+                print(f"[LLM Service] Groq API connection error with {model_name}: {e}")
+                continue
+
+    # -------------------------------------------------------------
+    # PROVIDER 2: GOOGLE GEMINI API (RELIABLE MULTIMODAL SECONDARY)
     # -------------------------------------------------------------
     if gemini_key:
         gemini_models = _get_gemini_models(gemini_key)
         for g_model in gemini_models:
-
             try:
                 g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={gemini_key}"
                 g_payload = {
@@ -200,7 +248,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                 continue
 
     # -------------------------------------------------------------
-    # PROVIDER 2: OPENAI (GPT-4o-mini)
+    # PROVIDER 3: OPENAI (GPT-4o-mini)
     # -------------------------------------------------------------
     if openai_key:
         try:
@@ -231,51 +279,6 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                 print(f"[LLM Service] OpenAI API HTTP {res.status_code}: {res.text[:150]}")
         except Exception as e:
             print(f"[LLM Service] OpenAI API error: {e}")
-
-    # -------------------------------------------------------------
-    # PROVIDER 3: GROQ API (LLAMA / GPT-OSS)
-    # -------------------------------------------------------------
-    if groq_key:
-        model_candidates = [
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "groq/compound-mini",
-            "groq/compound",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant"
-        ]
-        for model_name in model_candidates:
-            try:
-                url = "https://api.groq.com/openai/v1/chat/completions"
-                headers = {
-                    "Authorization": f"Bearer {groq_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_query}
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 400
-                }
-                
-                response = requests.post(url, json=payload, timeout=8)
-                if response.status_code == 200:
-                    res_json = response.json()
-                    choices = res_json.get("choices", [])
-                    if choices:
-                        content = choices[0].get("message", {}).get("content", "")
-                        clean_content = _clean_llm_response(content.strip(), language_choice)
-                        if clean_content:
-                            print(f"[LLM Service] Successfully generated response using Groq model: {model_name}")
-                            return clean_content
-                else:
-                    print(f"[LLM Service] Groq API HTTP {response.status_code} for {model_name}: {response.text[:150]}")
-            except Exception as e:
-                print(f"[LLM Service] Groq API connection error with {model_name}: {e}")
-                continue
 
     # -------------------------------------------------------------
     # PROVIDER 4: PRECISION AGRONOMIC FALLBACK ENGINE
