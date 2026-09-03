@@ -17,17 +17,30 @@ router = APIRouter(prefix="/inspections", tags=["Inspections"])
 
 MYT = timezone(timedelta(hours=8))
 
-def get_crop_stage_badge(elapsed_days: int):
-    if elapsed_days <= 14:
-        return "🌱 Seedling / Early Emergence Stage"
-    elif elapsed_days <= 35:
-        return "🌿 Vegetative Canopy Expansion Stage"
-    elif elapsed_days <= 49:
-        return "🌼 Flowering & Fruit Set Stage"
-    elif elapsed_days <= 55:
-        return "🧺 Active Harvest Window"
+def get_crop_stage_badge(elapsed_days: int, language_choice: str = "🇲🇾 Bahasa Melayu"):
+    is_english = "english" in (language_choice or "").lower()
+    if is_english:
+        if elapsed_days <= 14:
+            return "🌱 Seedling / Early Emergence Stage"
+        elif elapsed_days <= 35:
+            return "🌿 Vegetative Canopy Expansion Stage"
+        elif elapsed_days <= 49:
+            return "🌼 Flowering & Fruit Set Stage"
+        elif elapsed_days <= 55:
+            return "🧺 Active Harvest Window"
+        else:
+            return "🍂 Late Harvest / Maturation Stage"
     else:
-        return "🍂 Late Harvest / Maturation Stage"
+        if elapsed_days <= 14:
+            return "🌱 Peringkat Anak Benih / Percambahan Awal"
+        elif elapsed_days <= 35:
+            return "🌿 Peringkat Perluasan Kanopi Vegetatif"
+        elif elapsed_days <= 49:
+            return "🌼 Peringkat Berbunga & Pembentukan Buah"
+        elif elapsed_days <= 55:
+            return "🧺 Tempoh Menuai Aktif"
+        else:
+            return "🍂 Peringkat Tuaian Akhir / Kematangan"
 
 @router.post("/diagnose", response_model=InspectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_inspection(
@@ -50,7 +63,11 @@ async def create_inspection(
         f.write(contents)
         
     # 1. Run YOLOv8 ONNX Vision Inference
-    leaf_count, diagnosis, annotated_img = run_yolo_inference(temp_filepath, model_preference=model_preference)
+    leaf_count, diagnosis, annotated_img = run_yolo_inference(
+        temp_filepath, 
+        model_preference=model_preference, 
+        language_choice=language_choice
+    )
     
     # Save annotated image
     timestamp_str = datetime.now(MYT).strftime("%Y%m%d_%H%M%S")
@@ -71,19 +88,20 @@ async def create_inspection(
     # 2. Fetch Live Cloud IoT Sensor Telemetry
     iot_telemetry = fetch_cloud_iot_telemetry(plot_id if plot else "simulated")
     
-    # 3. Groq LLM Multimodal Fusion
+    # 3. LLM Multimodal Fusion
     intervention = generate_llm_intervention(diagnosis, iot_telemetry=iot_telemetry, language_choice=language_choice)
     
     # 4. Calculate Cycle Day & Stage Badge if plot is linked
     now_dt = datetime.now(MYT)
     cycle_day = 0
-    stage_name = "🌱 Quick Scan / Diagnostic Mode"
+    is_en = "english" in (language_choice or "").lower()
+    stage_name = "🌱 Quick Scan / Diagnostic Mode" if is_en else "🌱 Imbas Cepat / Mod Diagnostik"
     if plot:
         try:
             start_dt = datetime.strptime(plot.cycle_start_date, "%Y-%m-%d").date()
             elapsed = (now_dt.date() - start_dt).days
             cycle_day = max(0, elapsed)
-            stage_name = get_crop_stage_badge(cycle_day)
+            stage_name = get_crop_stage_badge(cycle_day, language_choice=language_choice)
         except Exception:
             pass
 

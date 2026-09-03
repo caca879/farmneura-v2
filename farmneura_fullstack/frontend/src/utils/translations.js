@@ -108,7 +108,14 @@ export const translations = {
     cropDiagnosisTitle: "🔍 Diagnosis Keadaan Tanaman",
     interventionTitle: "💡 Cadangan Tindakan Agronomis",
     fieldNotesLabel: "📝 Nota Lapangan / Pemerhatian (Pilihan)",
+    fieldNotesPlaceholder: "Masukkan butiran seperti kelembapan tanah, cuaca, atau pemerhatian pemeriksaan manual.",
     btnSaveRecord: "💾 Simpan Rekod ke Log Plot",
+    annotatedDetectionsTitle: "Pengesanan AI Beranotasi (Bilangan Daun & Kotak Sempadan)",
+    okraPodsDetectedLabel: "Jumlah Buah Bendi Dikesan:",
+    fieldNotesHistoryLabel: "Nota Lapangan:",
+    dayLabel: "Hari",
+    closeLabel: "Tutup",
+    enlargeHint: "🔍 Paparan Resolusi Penuh • Klik di mana-mana untuk tutup",
 
     // History Log
     historyLogHeader: "Rekod Pemantauan Plot",
@@ -289,7 +296,14 @@ export const translations = {
     cropDiagnosisTitle: "🔍 Crop Condition Diagnosis",
     interventionTitle: "💡 Recommended Intervention",
     fieldNotesLabel: "📝 Field Notes / Observations (Optional)",
+    fieldNotesPlaceholder: "Add any details about soil dampness, weather, or manual inspection details.",
     btnSaveRecord: "💾 Save Record to Plot Log",
+    annotatedDetectionsTitle: "Annotated AI Detections (Leaf Count & Bounding Boxes)",
+    okraPodsDetectedLabel: "Total Okra Pods Detected:",
+    fieldNotesHistoryLabel: "Field Notes:",
+    dayLabel: "Day",
+    closeLabel: "Close",
+    enlargeHint: "🔍 Full Resolution View • Click anywhere to close",
 
     // History Log
     historyLogHeader: "Plot Inspection Records for",
@@ -361,3 +375,115 @@ export const translations = {
     cardPricePerKg: "Price/kg"
   }
 };
+
+export function localizeDiagnosis(diagnosis, isEnglish) {
+  if (!diagnosis || typeof diagnosis !== "string") return diagnosis || "";
+
+  if (!isEnglish) {
+    // English -> Malay translations
+    const okraOptMatch = diagnosis.match(/optimal growth\.\s*all\s*(\d+)\s*detected okra pods appear healthy and ready for harvesting\./i);
+    if (okraOptMatch) {
+      return `Pertumbuhan optimum. Kesemua ${okraOptMatch[1]} buah bendi yang dikesan kelihatan sihat dan sedia untuk dituai.`;
+    }
+
+    const leafOptMatch = diagnosis.match(/healthy growth\.\s*all\s*(\d+)\s*detected leaves appear healthy and vigorous with strong chlorophyll signatures\./i);
+    if (leafOptMatch) {
+      return `Pertumbuhan sihat. Kesemua ${leafOptMatch[1]} daun yang dikesan kelihatan subur dan cergas dengan klorofil yang baik.`;
+    }
+
+    if (/no okra pods detected in frame/i.test(diagnosis)) {
+      return "Tiada buah bendi dikesan dalam bingkai gambar. Sila laraskan jarak kamera atau pencahayaan.";
+    }
+    if (/no leaves detected in frame/i.test(diagnosis)) {
+      return "Tiada daun dikesan dalam bingkai gambar. Sila laraskan jarak kamera atau pencahayaan.";
+    }
+
+    const stressedMatch = diagnosis.match(/detected\s*(\d+)\s*stressed\/overripe\s*(okra pods|leaves)\s*\((~\d+% of detected items)\)\.\s*breakdown:\s*(.*?)\.\s*\((\d+)\s*healthy\s*(okra pods|leaves)\)\./i);
+    if (stressedMatch) {
+      const count = stressedMatch[1];
+      const isOkra = /okra/i.test(stressedMatch[2]);
+      const noun = isOkra ? "buah bendi" : "daun";
+      const pct = stressedMatch[3].replace("of detected items", "daripada keseluruhan");
+      let breakdown = stressedMatch[4];
+
+      const diseaseMap = {
+        "Overripe Okra Pod": "Buah Bendi Terlebih Masak",
+        "Ripe Okra Pod (Harvest Ready)": "Buah Bendi Masak (Sedia Dituai)",
+        "Developing Okra Pod": "Buah Bendi Sedang Membesar",
+        "Yellow Vein Mosaic Virus": "Virus Mozek Urat Kuning",
+        "Okra Downy Mildew": "Kulapuk Berdebu Bendi",
+        "Healthy Okra Leaf": "Daun Bendi Sihat",
+        "Bacterial Spot": "Bintik Bakteria",
+        "Early Blight": "Hawar Awal",
+        "Healthy Leaf": "Daun Sihat",
+        "Late Blight": "Hawar Lewat",
+        "Leaf Mold": "Kulapuk Daun",
+        "Septoria Leaf Spot": "Bintik Daun Septoria",
+        "Target Spot": "Bintik Sasaran",
+        "Yellow Leaf Curl Virus": "Virus Kerinting Daun Kuning",
+        "Diseased / Stressed": "Bermasalah / Penyakit"
+      };
+
+      Object.entries(diseaseMap).forEach(([en, ms]) => {
+        breakdown = breakdown.split(en).join(ms);
+      });
+
+      const healthyCount = stressedMatch[5];
+      return `Mengesan ${count} ${noun} bermasalah/terlebih masak (${pct}). Pecahan: ${breakdown}. (${healthyCount} ${noun} sihat).`;
+    }
+  } else {
+    // Malay -> English translations
+    const okraOptMatchMs = diagnosis.match(/pertumbuhan optimum\.\s*kesemua\s*(\d+)\s*buah bendi yang dikesan kelihatan sihat dan sedia untuk dituai\./i);
+    if (okraOptMatchMs) {
+      return `Optimal growth. All ${okraOptMatchMs[1]} detected Okra pods appear healthy and ready for harvesting.`;
+    }
+
+    const leafOptMatchMs = diagnosis.match(/pertumbuhan sihat\.\s*kesemua\s*(\d+)\s*daun yang dikesan kelihatan subur dan (?:cergas|sihat) dengan klorofil yang (?:baik|kuat)\./i);
+    if (leafOptMatchMs) {
+      return `Healthy growth. All ${leafOptMatchMs[1]} detected leaves appear healthy and vigorous with strong chlorophyll signatures.`;
+    }
+
+    if (/tiada buah bendi dikesan/i.test(diagnosis)) {
+      return "No Okra pods detected in frame. Please adjust camera distance or lighting.";
+    }
+    if (/tiada daun dikesan/i.test(diagnosis)) {
+      return "No leaves detected in frame. Please adjust camera distance or lighting.";
+    }
+
+    const stressedMatchMs = diagnosis.match(/mengesan\s*(\d+)\s*(buah bendi|daun)\s*bermasalah\/terlebih masak\s*\((~\d+% daripada keseluruhan)\)\.\s*pecahan:\s*(.*?)\.\s*\((\d+)\s*(buah bendi|daun)\s*sihat\)\./i);
+    if (stressedMatchMs) {
+      const count = stressedMatchMs[1];
+      const isOkra = /bendi/i.test(stressedMatchMs[2]);
+      const noun = isOkra ? "Okra pods" : "leaves";
+      const pct = stressedMatchMs[3].replace("daripada keseluruhan", "of detected items");
+      let breakdown = stressedMatchMs[4];
+
+      const diseaseMapRev = {
+        "Buah Bendi Terlebih Masak": "Overripe Okra Pod",
+        "Buah Bendi Masak (Sedia Dituai)": "Ripe Okra Pod (Harvest Ready)",
+        "Buah Bendi Sedang Membesar": "Developing Okra Pod",
+        "Virus Mozek Urat Kuning": "Yellow Vein Mosaic Virus",
+        "Kulapuk Berdebu Bendi": "Okra Downy Mildew",
+        "Daun Bendi Sihat": "Healthy Okra Leaf",
+        "Bintik Bakteria": "Bacterial Spot",
+        "Hawar Awal": "Early Blight",
+        "Daun Sihat": "Healthy Leaf",
+        "Hawar Lewat": "Late Blight",
+        "Kulapuk Daun": "Leaf Mold",
+        "Bintik Daun Septoria": "Septoria Leaf Spot",
+        "Bintik Sasaran": "Target Spot",
+        "Virus Kerinting Daun Kuning": "Yellow Leaf Curl Virus",
+        "Bermasalah / Penyakit": "Diseased / Stressed"
+      };
+
+      Object.entries(diseaseMapRev).forEach(([ms, en]) => {
+        breakdown = breakdown.split(ms).join(en);
+      });
+
+      const healthyCount = stressedMatchMs[5];
+      return `Detected ${count} stressed/overripe ${noun} (${pct}). Breakdown: ${breakdown}. (${healthyCount} healthy ${noun}).`;
+    }
+  }
+
+  return diagnosis;
+}

@@ -33,6 +33,24 @@ TOMATO_CLASSES = {
     7: {"name": "Yellow Leaf Curl Virus", "is_healthy": False, "color": "#dd2c00"}
 }
 
+DISEASE_TRANSLATIONS_MS = {
+    "Overripe Okra Pod": "Buah Bendi Terlebih Masak",
+    "Ripe Okra Pod (Harvest Ready)": "Buah Bendi Masak (Sedia Dituai)",
+    "Developing Okra Pod": "Buah Bendi Sedang Membesar",
+    "Yellow Vein Mosaic Virus": "Virus Mozek Urat Kuning",
+    "Okra Downy Mildew": "Kulapuk Berdebu Bendi",
+    "Healthy Okra Leaf": "Daun Bendi Sihat",
+    "Bacterial Spot": "Bintik Bakteria",
+    "Early Blight": "Hawar Awal",
+    "Healthy Leaf": "Daun Sihat",
+    "Late Blight": "Hawar Lewat",
+    "Leaf Mold": "Kulapuk Daun",
+    "Septoria Leaf Spot": "Bintik Daun Septoria",
+    "Target Spot": "Bintik Sasaran",
+    "Yellow Leaf Curl Virus": "Virus Kerinting Daun Kuning",
+    "Diseased / Stressed": "Bermasalah / Tekanan Penyakit"
+}
+
 
 
 def simple_numpy_nms(boxes, scores, iou_threshold=0.45):
@@ -61,7 +79,7 @@ def simple_numpy_nms(boxes, scores, iou_threshold=0.45):
     return keep
 
 
-def run_yolo_inference(image_file, model_preference="Auto-Detect"):
+def run_yolo_inference(image_file, model_preference="Auto-Detect", language_choice="🇲🇾 Bahasa Melayu"):
     """
     Runs YOLOv8 ONNX inference on image input.
     Returns (leaf_count, diagnosis_string, annotated_pil_image).
@@ -222,19 +240,36 @@ def run_yolo_inference(image_file, model_preference="Auto-Detect"):
             draw.text((x1 + 4, max(2, y1 - 18)), label_txt, fill="#ffffff")
 
 
-        item_noun = "Okra pods" if is_okra_pod_model else "leaves"
+        is_english = "english" in (language_choice or "").lower()
 
-        if leaf_count == 0:
-            diagnosis = f"No {item_noun} detected in frame. Please adjust camera distance or lighting."
-        elif diseased_count > 0:
-            percentage = int((diseased_count / leaf_count) * 100)
-            breakdown = ", ".join([f"{cnt}x {dname}" for dname, cnt in disease_counts.items()])
-            diagnosis = f"Detected {diseased_count} stressed/overripe {item_noun} (~{percentage}% of detected items). Breakdown: {breakdown}. ({healthy_count} healthy {item_noun})."
-        else:
-            if is_okra_pod_model:
-                diagnosis = f"Optimal growth. All {leaf_count} detected Okra pods appear healthy and ready for harvesting."
+        if is_english:
+            item_noun = "Okra pods" if is_okra_pod_model else "leaves"
+
+            if leaf_count == 0:
+                diagnosis = f"No {item_noun} detected in frame. Please adjust camera distance or lighting."
+            elif diseased_count > 0:
+                percentage = int((diseased_count / leaf_count) * 100)
+                breakdown = ", ".join([f"{cnt}x {dname}" for dname, cnt in disease_counts.items()])
+                diagnosis = f"Detected {diseased_count} stressed/overripe {item_noun} (~{percentage}% of detected items). Breakdown: {breakdown}. ({healthy_count} healthy {item_noun})."
             else:
-                diagnosis = f"Healthy growth. All {leaf_count} detected leaves appear healthy and vigorous with strong chlorophyll signatures."
+                if is_okra_pod_model:
+                    diagnosis = f"Optimal growth. All {leaf_count} detected Okra pods appear healthy and ready for harvesting."
+                else:
+                    diagnosis = f"Healthy growth. All {leaf_count} detected leaves appear healthy and vigorous with strong chlorophyll signatures."
+        else:
+            item_noun = "buah bendi" if is_okra_pod_model else "daun"
+
+            if leaf_count == 0:
+                diagnosis = f"Tiada {item_noun} dikesan dalam bingkai gambar. Sila laraskan jarak kamera atau pencahayaan."
+            elif diseased_count > 0:
+                percentage = int((diseased_count / leaf_count) * 100)
+                breakdown = ", ".join([f"{cnt}x {DISEASE_TRANSLATIONS_MS.get(dname, dname)}" for dname, cnt in disease_counts.items()])
+                diagnosis = f"Mengesan {diseased_count} {item_noun} bermasalah/terlebih masak (~{percentage}% daripada keseluruhan). Pecahan: {breakdown}. ({healthy_count} {item_noun} sihat)."
+            else:
+                if is_okra_pod_model:
+                    diagnosis = f"Pertumbuhan optimum. Kesemua {leaf_count} buah bendi yang dikesan kelihatan sihat dan sedia untuk dituai."
+                else:
+                    diagnosis = f"Pertumbuhan sihat. Kesemua {leaf_count} daun yang dikesan kelihatan subur dan cergas dengan klorofil yang baik."
 
 
         return leaf_count, diagnosis, image

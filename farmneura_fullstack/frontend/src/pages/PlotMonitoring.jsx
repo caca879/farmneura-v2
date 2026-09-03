@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { fetchFarms, fetchPlots, fetchCrops, fetchTelemetry, submitInspection, saveQuickScan, fetchInspectionHistory, deleteInspection } from '../services/api';
 import { Camera, RefreshCw, Cpu, Activity, Leaf, Trash2, Calendar, AlertCircle, CheckCircle, Sprout, Image as ImageIcon, Zap } from 'lucide-react';
-import { translations } from '../utils/translations';
+import { translations, localizeDiagnosis } from '../utils/translations';
 
 const renderFormattedText = (text) => {
   if (!text) return null;
@@ -16,7 +16,8 @@ const renderFormattedText = (text) => {
 
 export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelectFarmPlot, lang, setLang, user }) {
   const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
-  const languageChoice = lang?.includes('English') ? '🇬🇧 English' : '🇲🇾 Bahasa Melayu';
+  const isEnglish = Boolean(lang?.includes('English'));
+  const languageChoice = isEnglish ? '🇬🇧 English' : '🇲🇾 Bahasa Melayu';
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -585,7 +586,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               {/* Annotated Bounding Box Image Card */}
               <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-2">
                 <div className="text-xs font-bold text-gray-700 flex items-center justify-between gap-2">
-                  <span>Annotated AI Detections (Leaf Count & Bounding Boxes)</span>
+                  <span>{t.annotatedDetectionsTitle}</span>
                   <span className="whitespace-nowrap flex-shrink-0 bg-emerald-100 text-emerald-800 text-[11px] px-2.5 py-1 rounded-full font-bold border border-emerald-200 shadow-xs flex items-center justify-center">
                     YOLOv8 ONNX
                   </span>
@@ -608,7 +609,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               <div className="bg-white border border-gray-200 rounded-2xl p-4 text-center shadow-sm">
                 <div className="text-3xl font-extrabold text-farmGreen-500">{currentResult.leaf_count}</div>
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1 flex items-center justify-center space-x-1">
-                  {currentResult.diagnosis?.toLowerCase().includes('okra pod') || modelPref.includes('Pod') ? (
+                  {currentResult.diagnosis?.toLowerCase().includes('okra pod') || currentResult.diagnosis?.toLowerCase().includes('buah bendi') || modelPref.includes('Pod') ? (
                     <span>{t.totalOkraPods}</span>
                   ) : (
                     <span>{t.totalLeaves}</span>
@@ -619,7 +620,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               {/* Diagnosis Card */}
               <div className="bg-white border-l-4 border-amber-500 rounded-xl p-4 shadow-sm">
                 <h4 className="font-bold text-gray-900 text-sm mb-1">{t.cropDiagnosisTitle}</h4>
-                <div className="text-xs text-gray-700 leading-relaxed">{renderFormattedText(currentResult.diagnosis)}</div>
+                <div className="text-xs text-gray-700 leading-relaxed">{renderFormattedText(localizeDiagnosis(currentResult.diagnosis, isEnglish))}</div>
               </div>
 
               {/* LLM Intervention Card */}
@@ -634,7 +635,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
                   <label className="block text-xs font-bold text-gray-700">{t.fieldNotesLabel}</label>
                   <textarea
-                    placeholder="Add any details about soil dampness, weather, or manual inspection details."
+                    placeholder={t.fieldNotesPlaceholder}
                     value={fieldNotes}
                     onChange={(e) => setFieldNotes(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs h-20"
@@ -708,7 +709,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">{t.fieldNotesLabel}</label>
                     <textarea
-                      placeholder="Add any details about soil dampness, weather, or manual inspection details."
+                      placeholder={t.fieldNotesPlaceholder}
                       value={fieldNotes}
                       onChange={(e) => setFieldNotes(e.target.value)}
                       className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs h-20"
@@ -757,7 +758,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                         <Calendar className="w-4 h-4 text-farmGreen-500" />
                         <span>{rec.created_at}</span>
                         <span className="bg-green-100 text-farmGreen-700 px-2 py-0.5 rounded-full font-medium">
-                          {rec.stage_name} (Day {rec.cycle_day})
+                          {rec.stage_name} ({t.dayLabel} {rec.cycle_day})
                         </span>
                         {(() => {
                           const cropMatch = crops.find(c => c.id === rec.crop_id);
@@ -799,20 +800,20 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                       />
                       <div className="space-y-1 text-xs">
                         <div className="font-semibold text-gray-900">
-                          {rec.diagnosis?.toLowerCase().includes('okra pod') || rec.diagnosis?.toLowerCase().includes('pod') ? (
-                            <span>🥒 Jumlah Buah Bendi Dikesan: {rec.leaf_count}</span>
+                          {rec.diagnosis?.toLowerCase().includes('okra pod') || rec.diagnosis?.toLowerCase().includes('buah bendi') || rec.diagnosis?.toLowerCase().includes('pod') ? (
+                            <span>🥒 {t.okraPodsDetectedLabel} {rec.leaf_count}</span>
                           ) : (
                             <span>🍃 {t.leavesDetectedLabel} {rec.leaf_count}</span>
                           )}
                         </div>
-                        <div className="text-gray-700"><strong>{t.diagnosisLabel}</strong> {renderFormattedText(rec.diagnosis)}</div>
+                        <div className="text-gray-700"><strong>{t.diagnosisLabel}</strong> {renderFormattedText(localizeDiagnosis(rec.diagnosis, isEnglish))}</div>
 
                         <div className="text-gray-800 whitespace-pre-line leading-relaxed mt-1">
                           <strong>{t.interventionLabel}</strong> {renderFormattedText(rec.intervention)}
                         </div>
                         {rec.field_notes && (
                           <div className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200 mt-1">
-                            📝 <strong>Nota Lapangan:</strong> {rec.field_notes}
+                            📝 <strong>{t.fieldNotesHistoryLabel}</strong> {rec.field_notes}
                           </div>
                         )}
                       </div>
@@ -837,14 +838,14 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               onClick={() => setModalImage(null)}
               className="absolute -top-10 right-0 bg-white/20 hover:bg-white/40 text-white rounded-full px-3 py-1 text-xs font-bold shadow transition"
             >
-              ✕ Close
+              ✕ {t.closeLabel}
             </button>
             <img 
               src={modalImage} 
               alt="Enlarged View" 
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20"
             />
-            <p className="text-white/80 text-xs mt-3 font-semibold">🔍 Full Resolution View • Click anywhere to close</p>
+            <p className="text-white/80 text-xs mt-3 font-semibold">{t.enlargeHint}</p>
           </div>
         </div>
       )}
