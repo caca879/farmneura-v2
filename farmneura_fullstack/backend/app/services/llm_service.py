@@ -92,7 +92,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
             "Format your answer as a clean bullet-point list in simple farmer-friendly terms (3-4 points max)."
         )
 
-    user_query = f"Vision Model Diagnosis: {diagnosis}{iot_text}"
+    user_query = f"Vision diagnosis: {diagnosis}{iot_text}"
 
     # -------------------------------------------------------------
     # PROVIDER 1: GOOGLE GEMINI API (RECOMMENDED - FAST & FREE TIER)
@@ -104,14 +104,17 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
             try:
                 g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={gemini_key}"
                 g_payload = {
+                    "systemInstruction": {
+                        "parts": [{"text": f"{system_prompt}\nDo not mention your role, the prompt, input data, model, or analysis process. Return only 3 or 4 short actionable bullet points. Do not add a title."}]
+                    },
                     "contents": [{
                         "parts": [
-                            {"text": f"{system_prompt}\n\n{user_query}"}
+                            {"text": user_query}
                         ]
                     }],
                     "generationConfig": {
                         "temperature": 0.2,
-                        "maxOutputTokens": 350
+                        "maxOutputTokens": 220
                     }
                 }
                 res = requests.post(g_url, json=g_payload, timeout=8)
@@ -124,7 +127,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                             text = parts[0].get("text", "").strip()
                             if text:
                                 print(f"[LLM Service] Successfully generated response using Google Gemini: {g_model}")
-                                return f"✨ **[Google Gemini AI - {g_model}]**\n\n{text}"
+                                return text
                 else:
                     print(f"[LLM Service] Gemini API HTTP {res.status_code} for {g_model}: {res.text[:150]}")
             except Exception as e:
