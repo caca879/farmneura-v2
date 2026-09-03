@@ -16,6 +16,7 @@ const renderFormattedText = (text) => {
 
 export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelectFarmPlot, lang, setLang, user }) {
   const t = translations[lang] || translations["🇲🇾 Bahasa Melayu"];
+  const languageChoice = lang?.includes('English') ? '🇬🇧 English' : '🇲🇾 Bahasa Melayu';
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -29,7 +30,6 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   // Diagnostic & Model Options
   const [modelPref, setModelPref] = useState('Auto-Detect');
-  const [langChoice, setLangChoice] = useState('🇲🇾 Bahasa Melayu');
   const [fieldNotes, setFieldNotes] = useState('');
 
   // Sub Tab: 'record' vs 'quick_scan' vs 'history'
@@ -221,7 +221,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
         formData.append('plot_id', 'quick_scan');
       }
       formData.append('model_preference', modelPref);
-      formData.append('language_choice', langChoice);
+      formData.append('language_choice', languageChoice);
       if (fieldNotes) formData.append('field_notes', fieldNotes);
       formData.append('file', selectedFile);
 
@@ -647,7 +647,7 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
                       savingQuickScan ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-farmGreen-500 hover:bg-farmGreen-700 text-white'
                     }`}
                   >
-                    <span>{savingQuickScan ? (langChoice?.includes('Melayu') ? 'Menyimpan...' : 'Saving...') : t.btnSaveRecord}</span>
+                    <span>{savingQuickScan ? (languageChoice.includes('Melayu') ? 'Menyimpan...' : 'Saving...') : t.btnSaveRecord}</span>
                   </button>
 
                 </div>

@@ -38,7 +38,8 @@ def _get_agronomic_fallback(diagnosis: str, iot_telemetry: dict = None, language
     m_val = iot_telemetry.get('soil_moisture', 50.0) if iot_telemetry else 50.0
     ec_val = iot_telemetry.get('soil_ec', 1.8) if iot_telemetry else 1.8
 
-    if language_choice == "🇲🇾 Bahasa Melayu":
+    is_english = "english" in (language_choice or "").lower()
+    if not is_english:
         if m_val < 40 or "chlorosis" in d_lower or "nitrogen" in d_lower or "yellow" in d_lower:
             return f"- **Diagnosis Agronomis Jitu (Visi + Sensor)**: Simptom kanopi dikesan oleh YOLOv8 dan disahkan oleh penderia IoT Awan (Kelembapan tanah: {m_val}%, EC: {ec_val} mS/cm).\n- Sembur baja cecair nitrogen dan mulakan penyiraman titis selama 20 minit.\n- Periksa tahap kedalaman akar untuk mengelakkan tekanan haba tanah."
         elif "spot" in d_lower or "fungal" in d_lower or "disease" in d_lower or "virus" in d_lower:
@@ -79,7 +80,8 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
             f"- Soil pH: {iot_telemetry.get('soil_ph')}"
         )
     
-    if language_choice == "🇲🇾 Bahasa Melayu":
+    is_english = "english" in (language_choice or "").lower()
+    if not is_english:
         system_prompt = (
             "Anda adalah ejen pertanian jitu FarmNeura, seorang agronomis profesional yang pakar dalam penggabungan data visi komputer (YOLOv8) dan data sensor IoT Awan (Cloud IoT Telemetry).\n"
             "Analisis kedua-dua simptom visual kanopi dan bacaan sensor IoT untuk memberikan cadangan tindakan pemulihan yang tepat dan praktikal.\n"
