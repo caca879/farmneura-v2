@@ -96,7 +96,12 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+    @import url('https://use.typekit.net/cjq2err.css');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+
+    html, body, [class*="css"], .stMarkdown, p, h1, h2, h3, h4, span, div, button {
+        font-family: 'arboria', 'Plus Jakarta Sans', sans-serif !important;
+    }
 
     /* Custom App Header Card */
     .header-card {
