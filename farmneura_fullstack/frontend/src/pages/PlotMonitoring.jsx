@@ -31,7 +31,9 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
 
   // Diagnostic & Model Options
   const [modelPref, setModelPref] = useState('Auto-Detect');
+  const [llmProvider, setLlmProvider] = useState('Auto');
   const [fieldNotes, setFieldNotes] = useState('');
+
 
   // Sub Tab: 'record' vs 'quick_scan' vs 'history'
   const [activeTab, setActiveTab] = useState('record');
@@ -223,7 +225,9 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
       }
       formData.append('model_preference', modelPref);
       formData.append('language_choice', languageChoice);
+      formData.append('llm_provider', llmProvider);
       if (fieldNotes) formData.append('field_notes', fieldNotes);
+
       formData.append('file', selectedFile);
 
       const result = await submitInspection(formData);
@@ -542,20 +546,38 @@ export default function PlotMonitoring({ selectedFarmId, selectedPlotId, onSelec
               </div>
             )}
 
-            <div className="pt-2">
-              <label className="block text-xs font-bold text-gray-700 mb-1">{t.aiModelLabel}</label>
-              <select
-                value={modelPref}
-                onChange={(e) => setModelPref(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800"
-              >
-                <option value="Auto-Detect">Auto-Detect (Best Model)</option>
-                <option value="Okra Pod">Okra Pod & Fruit Ripeness (3 Classes)</option>
-                <option value="Okra Leaf">Okra Leaf Health & Disease (3 Classes)</option>
-                <option value="Tomato">Tomato & Solanaceae (8 Classes)</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.aiModelLabel}</label>
+                <select
+                  value={modelPref}
+                  onChange={(e) => setModelPref(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800"
+                >
+                  <option value="Auto-Detect">Auto-Detect (YOLOv8)</option>
+                  <option value="Okra Pod">Okra Pod Ripeness (3 Classes)</option>
+                  <option value="Okra Leaf">Okra Leaf Disease (3 Classes)</option>
+                  <option value="Tomato">Tomato Disease (8 Classes)</option>
+                </select>
+              </div>
 
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {isEnglish ? 'LLM Provider / Model' : 'Penyedia Model LLM AI'}
+                </label>
+                <select
+                  value={llmProvider}
+                  onChange={(e) => setLlmProvider(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-800"
+                >
+                  <option value="Auto">⚡ Auto (Groq ➔ Gemini ➔ OpenAI)</option>
+                  <option value="Groq">🤖 Groq AI (Llama 3.3 70B)</option>
+                  <option value="Gemini">✨ Google Gemini AI (Gemini 1.5/2.0)</option>
+                  <option value="OpenAI">🟢 OpenAI (GPT-4o-mini)</option>
+                </select>
+              </div>
             </div>
+
 
             <button
               onClick={handleDiagnose}

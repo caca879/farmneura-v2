@@ -48,6 +48,7 @@ async def create_inspection(
     crop_id: Optional[str] = Form(None),
     model_preference: str = Form("Auto-Detect"),
     language_choice: str = Form("Bahasa Melayu"),
+    llm_provider: Optional[str] = Form("Auto"),
     field_notes: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
@@ -89,7 +90,13 @@ async def create_inspection(
     iot_telemetry = fetch_cloud_iot_telemetry(plot_id if plot else "simulated")
     
     # 3. LLM Multimodal Fusion
-    intervention = generate_llm_intervention(diagnosis, iot_telemetry=iot_telemetry, language_choice=language_choice)
+    intervention = generate_llm_intervention(
+        diagnosis, 
+        iot_telemetry=iot_telemetry, 
+        language_choice=language_choice,
+        llm_provider=llm_provider
+    )
+
     
     # 4. Calculate Cycle Day & Stage Badge if plot is linked
     now_dt = datetime.now(MYT)
