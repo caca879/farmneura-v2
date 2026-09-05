@@ -53,7 +53,7 @@ export default function Overview({ onSelectAction, lang, user }) {
             <span className="truncate">{t.metricOverallHealth}</span>
           </div>
           <div className="text-xl sm:text-2xl font-black text-emerald-700 mt-2">
-            {data?.overall_health_pct || 100}% <span className="text-xs font-bold text-emerald-600">Sihat</span>
+            {data?.overall_health_pct || 100}% <span className="text-xs font-bold text-emerald-600">{t.healthyLabel || 'Sihat'}</span>
           </div>
         </div>
 
@@ -94,7 +94,7 @@ export default function Overview({ onSelectAction, lang, user }) {
         <div className="bg-white border border-emerald-200 bg-emerald-50/30 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col justify-between min-h-[90px]">
           <div className="flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold text-emerald-800">
             <span className="text-sm">🌾</span>
-            <span className="truncate">Jumlah Tuaian (KG)</span>
+            <span className="truncate">{t.metricTotalHarvest || 'Jumlah Tuaian (KG)'}</span>
           </div>
           <div className="text-xl sm:text-2xl font-black text-emerald-800 mt-2">
             {data?.total_harvest_kg || 0} <span className="text-xs font-bold text-emerald-600">kg</span>
@@ -105,12 +105,13 @@ export default function Overview({ onSelectAction, lang, user }) {
         <div className="bg-white border border-amber-200 bg-amber-50/30 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col justify-between min-h-[90px]">
           <div className="flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold text-amber-800">
             <span className="text-sm">💰</span>
-            <span className="truncate">Anggaran Hasil RM</span>
+            <span className="truncate">{t.metricEstRevenue || 'Anggaran Hasil RM'}</span>
           </div>
           <div className="text-xl sm:text-2xl font-black text-amber-900 mt-2">
             RM {(data?.total_harvest_revenue_myr || 0).toFixed(2)}
           </div>
         </div>
+
       </div>
 
 

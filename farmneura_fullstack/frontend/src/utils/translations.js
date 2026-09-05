@@ -57,6 +57,10 @@ export const translations = {
     metricNeedsAttention: "Memerlukan Perhatian:",
     metricNeedsPhoto: "Perlu Kemaskini Gambar:",
     metricActivePlots: "Plot Aktif:",
+    healthyLabel: "Sihat",
+    metricTotalHarvest: "Jumlah Tuaian (KG)",
+    metricEstRevenue: "Anggaran Hasil (RM)",
+
 
     actionListTitle: "Senarai Tindakan Hari Ini",
     actionListSubtitle: "Tugasan pemeriksaan plot berkeutamaan berdasarkan diagnosis visi AI terkini.",
@@ -245,6 +249,10 @@ export const translations = {
     metricNeedsAttention: "Needs Attention:",
     metricNeedsPhoto: "Needs Photo Update:",
     metricActivePlots: "Active Plots:",
+    healthyLabel: "Healthy",
+    metricTotalHarvest: "Total Harvest (KG)",
+    metricEstRevenue: "Estimated Revenue (RM)",
+
 
     actionListTitle: "Today's Action List",
     actionListSubtitle: "Prioritized plot inspection tasks based on latest AI vision diagnosis.",
