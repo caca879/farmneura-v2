@@ -159,6 +159,10 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
         )
         user_query = f"Crop Diagnosis: {diagnosis}{iot_text}\n\nProvide 3 immediate agronomic actions:"
 
+    last_groq_error = ""
+    last_gemini_error = ""
+    last_openai_error = ""
+
     # -------------------------------------------------------------
     # PROVIDER EXECUTION: GROQ API
     # -------------------------------------------------------------
@@ -167,9 +171,9 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
             configured_groq = getattr(settings, "GROQ_MODEL", "").strip()
             candidates = [configured_groq] if configured_groq else []
             candidates.extend([
-                "openai/gpt-oss-120b",
-                "openai/gpt-oss-20b",
                 "llama-3.3-70b-versatile",
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b",
                 "groq/compound-mini",
                 "groq/compound",
                 "llama-3.1-8b-instant"
@@ -193,19 +197,22 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                         "max_tokens": 400
                     }
                     
-                    response = requests.post(url, json=payload, timeout=6)
+                    response = requests.post(url, json=payload, timeout=12)
                     if response.status_code == 200:
                         res_json = response.json()
                         choices = res_json.get("choices", [])
                         if choices:
-                            content = choices[0].get("message", {}).get("content", "")
+                            msg = choices[0].get("message", {})
+                            content = msg.get("content") or msg.get("reasoning") or ""
                             clean_content = _clean_llm_response(content.strip(), language_choice)
                             if clean_content:
                                 print(f"[LLM Service] Successfully generated response using Groq model: {model_name}")
                                 return clean_content
                     else:
+                        last_groq_error = f"HTTP {response.status_code}: {response.text[:120]}"
                         print(f"[LLM Service] Groq API HTTP {response.status_code} for {model_name}: {response.text[:150]}")
                 except Exception as e:
+                    last_groq_error = str(e)
                     print(f"[LLM Service] Groq API connection error with {model_name}: {e}")
                     continue
 
@@ -232,7 +239,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                             "maxOutputTokens": 500
                         }
                     }
-                    res = requests.post(g_url, json=g_payload, timeout=8)
+                    res = requests.post(g_url, json=g_payload, timeout=10)
                     if res.status_code == 200:
                         data = res.json()
                         candidates = data.get("candidates", [])
@@ -245,8 +252,10 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                                     print(f"[LLM Service] Successfully generated response using Google Gemini: {g_model}")
                                     return clean_text
                     else:
+                        last_gemini_error = f"HTTP {res.status_code}: {res.text[:120]}"
                         print(f"[LLM Service] Gemini API HTTP {res.status_code} for {g_model}: {res.text[:150]}")
                 except Exception as e:
+                    last_gemini_error = str(e)
                     print(f"[LLM Service] Gemini API error: {e}")
                     continue
 
@@ -270,7 +279,7 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                     "temperature": 0.2,
                     "max_tokens": 400
                 }
-                res = requests.post(o_url, json=o_payload, timeout=8)
+                res = requests.post(o_url, json=o_payload, timeout=10)
                 if res.status_code == 200:
                     choices = res.json().get("choices", [])
                     if choices:
@@ -280,13 +289,34 @@ def generate_llm_intervention(diagnosis: str, iot_telemetry: dict = None, langua
                             print("[LLM Service] Successfully generated response using OpenAI GPT-4o-mini")
                             return clean_text
                 else:
+                    last_openai_error = f"HTTP {res.status_code}: {res.text[:120]}"
                     print(f"[LLM Service] OpenAI API HTTP {res.status_code}: {res.text[:150]}")
             except Exception as e:
+                last_openai_error = str(e)
                 print(f"[LLM Service] OpenAI API error: {e}")
 
     # Fallback if key was explicitly chosen but missing/failed
     if provider_choice != "auto":
-        prefix_msg = f"⚠️ Note: Explicitly requested {llm_provider} API key is missing or request failed. Showing precision agronomic recommendation:\n\n"
+        error_detail = ""
+        if provider_choice == "openai":
+            if not openai_key:
+                error_detail = "OPENAI_API_KEY is not set in Render"
+            elif "429" in last_openai_error or "credit" in last_openai_error.lower():
+                error_detail = "OpenAI account has 0 credits remaining (HTTP 429 quota error). Please add credits at platform.openai.com/billing"
+            else:
+                error_detail = last_openai_error or "OpenAI request failed"
+        elif provider_choice == "groq":
+            if not groq_key:
+                error_detail = "GROQ_API_KEY is not set in Render"
+            else:
+                error_detail = last_groq_error or "Groq request failed"
+        elif provider_choice == "gemini":
+            if not gemini_key:
+                error_detail = "GEMINI_API_KEY is not set in Render"
+            else:
+                error_detail = last_gemini_error or "Gemini request failed"
+
+        prefix_msg = f"⚠️ Note: Explicitly requested {llm_provider} ({error_detail}). Showing precision agronomic recommendation:\n\n"
         return prefix_msg + _get_agronomic_fallback(diagnosis, iot_telemetry, language_choice)
 
     # Standard Fallback
